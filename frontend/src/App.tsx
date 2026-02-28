@@ -14,7 +14,6 @@ import axios from 'axios'
 function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async (type: 'login' | 'register') => {
@@ -23,7 +22,6 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
       return
     }
 
-    setLoading(true)
     setError(null)
     try {
       const response = await api.post(`/auth/${type}`, { email, password })
@@ -36,8 +34,6 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
       } else {
         setError('Unexpected error while authenticating. Please try again.')
       }
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -48,11 +44,11 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
       <input className="w-full bg-white/10 rounded-lg p-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       {error && <p className="text-sm text-red-300">{error}</p>}
       <div className="flex gap-2">
-        <button className="flex-1 glass-card p-2 disabled:opacity-50" disabled={loading} onClick={() => submit('login')}>
-          {loading ? 'Working...' : 'Login'}
+        <button className="flex-1 glass-card p-2" onClick={() => submit('login')}>
+          Login
         </button>
-        <button className="flex-1 glass-card p-2 disabled:opacity-50" disabled={loading} onClick={() => submit('register')}>
-          {loading ? 'Working...' : 'Register'}
+        <button className="flex-1 glass-card p-2" onClick={() => submit('register')}>
+          Register
         </button>
       </div>
     </div>
@@ -70,6 +66,7 @@ export default function App() {
     const token = localStorage.getItem('token')
     if (token) saveToken(token)
     setShowAuthModal(false)
+    navigate('/dashboard')
   }
 
   const profileInitial = useMemo(() => {
