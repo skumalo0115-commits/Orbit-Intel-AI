@@ -50,6 +50,50 @@ function AnalysisLoader() {
   )
 }
 
+type MatchCard = {
+  title: string
+  score: number
+  salary: string
+  description: string
+}
+
+function InteractiveCard({ card, delay }: { card: MatchCard; delay: number }) {
+  const [mouse, setMouse] = useState({ x: 0, y: 0 })
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: false, amount: 0.25 }}
+      transition={{ duration: 0.45, delay }}
+      whileHover={{ y: -6, scale: 1.01 }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 30
+        const y = ((e.clientY - rect.top) / rect.height - 0.5) * 30
+        setMouse({ x, y })
+      }}
+      onMouseLeave={() => setMouse({ x: 0, y: 0 })}
+      className="relative overflow-hidden rounded-3xl border border-white/20 p-5 bg-white/5 backdrop-blur-xl"
+      style={{
+        backgroundImage: `radial-gradient(circle at ${50 + mouse.x}% ${50 + mouse.y}%, rgba(0,217,255,0.18), transparent 40%), linear-gradient(160deg, rgba(147,51,234,0.18), rgba(15,23,42,0.72))`,
+      }}
+    >
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className="text-3xl font-semibold">{card.title}</h3>
+        <span className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-xl">{card.score}%</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-white/15 mb-4">
+        <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${card.score}%` }} />
+      </div>
+      <p className="text-[#d6ddef] text-xl leading-relaxed">{card.description}</p>
+      <div className="mt-5 text-emerald-300 text-2xl font-semibold inline-flex items-center gap-2">
+        <TrendingUp size={22} /> {card.salary}
+      </div>
+    </motion.article>
+  )
+}
+
 export default function AnalysisPage({ documentId }: { documentId: number }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
