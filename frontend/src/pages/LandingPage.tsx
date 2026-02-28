@@ -15,7 +15,7 @@ import {
   WandSparkles,
   Zap,
 } from 'lucide-react'
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 
 type LandingProps = {
   onEnter: () => void
@@ -26,6 +26,21 @@ type LandingProps = {
 type MiniCardProps = { icon: 'analysis' | 'precision' | 'growth'; title: string; description: string; delay: number }
 type CareerCardProps = { title: string; description: string; image: string; tint: string; delay: number }
 type HowCardProps = { title: string; description: string; delay: number; icon: 'share' | 'analysis' | 'roadmap' }
+
+
+function useTypingText(text: string, speed = 45) {
+  const [value, setValue] = useState('')
+  useEffect(() => {
+    let i = 0
+    const t = setInterval(() => {
+      i += 1
+      setValue(text.slice(0, i))
+      if (i >= text.length) clearInterval(t)
+    }, speed)
+    return () => clearInterval(t)
+  }, [text, speed])
+  return value
+}
 
 function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
   const Icon = icon === 'analysis' ? Sparkles : icon === 'precision' ? Crosshair : TrendingUp
@@ -155,6 +170,8 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
   const scrollYPos = useTransform(scrollY, [0, 90], [0, 20])
   const rawFade = useTransform(scrollY, [0, 500], [0.35, 0.95])
   const heroFadeToBlack = useSpring(rawFade, { stiffness: 85, damping: 24, mass: 0.8 })
+  const headingLine1 = useTypingText('Your Future', 55)
+  const headingLine2 = useTypingText('Starts Here', 55)
 
   const bgStyle = useMemo(
     () => ({
@@ -182,7 +199,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
           <motion.div className="mb-6 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
             <div className="w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon"><Brain className="text-cyan-300" size={46} /></div>
           </motion.div>
-          <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.03]"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">Your Future</span><br /><span className="text-white">Starts Here</span></h1>
+          <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.03] min-h-[170px] md:min-h-[220px]"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine1}</span><br /><span className="text-white">{headingLine2}</span></h1>
           <p className="text-[#c5d0df] text-2xl max-w-4xl mx-auto mt-7 leading-relaxed">Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.</p>
           <motion.button onClick={onEnter} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-2xl">
             Begin Your Journey

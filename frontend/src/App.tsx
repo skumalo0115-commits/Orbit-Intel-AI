@@ -56,7 +56,7 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 export default function App() {
-  const { isAuthenticated, saveToken, logout } = useAuth()
+  const { isAuthenticated, saveToken } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -78,7 +78,7 @@ export default function App() {
     <>
       {location.pathname !== '/' && <SpaceBackground />}
       {location.pathname !== '/' && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onLogout={logout} />}
+      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} profileInitial={profileInitial} />}
 
       <div className={isAuthenticated ? 'lg:grid lg:grid-cols-[260px_1fr] min-h-screen' : 'min-h-screen'}>
         {isAuthenticated && location.pathname !== '/' && <div className="hidden lg:block p-6 pt-28"><Sidebar /></div>}
