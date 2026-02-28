@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import MouseGlow from './components/MouseGlow'
 import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
 import SpaceBackground from './components/SpaceBackground'
 import { useAuth } from './hooks/useAuth'
 import AnalysisPage from './pages/AnalysisPage'
@@ -80,8 +79,7 @@ export default function App() {
       {location.pathname !== '/' && <MouseGlow />}
       {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} profileInitial={profileInitial} />}
 
-      <div className={isAuthenticated ? 'lg:grid lg:grid-cols-[260px_1fr] min-h-screen' : 'min-h-screen'}>
-        {isAuthenticated && location.pathname !== '/' && <div className="hidden lg:block p-6 pt-28"><Sidebar /></div>}
+      <div className="min-h-screen">
         <main>
           <Routes>
             <Route
