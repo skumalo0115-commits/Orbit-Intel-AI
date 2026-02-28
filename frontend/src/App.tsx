@@ -55,7 +55,7 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 export default function App() {
-  const { isAuthenticated, saveToken } = useAuth()
+  const { isAuthenticated, saveToken, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -73,11 +73,19 @@ export default function App() {
     return email ? email[0].toUpperCase() : 'U'
   }, [isAuthenticated])
 
+  const signOut = () => {
+    logout()
+    localStorage.removeItem('profile_email')
+    setSelectedId(null)
+    setShowAuthModal(false)
+    navigate('/')
+  }
+
   return (
     <>
       {location.pathname !== '/' && <SpaceBackground />}
       {location.pathname !== '/' && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} profileInitial={profileInitial} />}
+      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} onSignOut={signOut} profileInitial={profileInitial} />}
 
       <div className="min-h-screen">
         <main>

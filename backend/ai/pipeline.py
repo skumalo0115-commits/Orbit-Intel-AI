@@ -83,6 +83,9 @@ class AIPipeline:
                 return "Invoice"
             if "curriculum" in content or "resume" in content or "cv" in content:
                 return "CV"
+            cv_signals = ["education", "experience", "skills", "projects", "objective", "linkedin", "certification"]
+            if sum(1 for signal in cv_signals if signal in content) >= 2:
+                return "CV"
             if "agreement" in content or "contract" in content:
                 return "Contract"
             if "financial" in content or "balance" in content:

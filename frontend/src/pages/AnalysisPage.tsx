@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, CircleCheckBig, CircleDot, LoaderCircle, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -20,29 +20,29 @@ interface Analysis {
 
 function AnalysisLoader() {
   return (
-    <div className="min-h-[58vh] flex flex-col items-center justify-center text-center">
-      <div className="relative w-36 h-36 mb-8">
+    <div className="min-h-[52vh] flex flex-col items-center justify-center text-center">
+      <div className="relative w-32 h-32 mb-7">
         <motion.div
           className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400"
           animate={{ rotate: 360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
         />
         <motion.div
           className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300"
           animate={{ rotate: -360 }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 0.95, repeat: Infinity, ease: 'linear' }}
         />
         <motion.div
-          className="absolute inset-[26px] rounded-full border-2 border-cyan-300/60"
+          className="absolute inset-[24px] rounded-full border-2 border-cyan-300/60"
           animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
       <motion.p
         className="text-3xl md:text-4xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent"
         animate={{ opacity: [0.5, 1, 0.5], y: [0, -2, 0] }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
       >
         Analysing your career path...
       </motion.p>
@@ -50,47 +50,23 @@ function AnalysisLoader() {
   )
 }
 
-type MatchCard = {
-  title: string
-  score: number
-  salary: string
-  description: string
-}
-
-function InteractiveCard({ card, delay }: { card: MatchCard; delay: number }) {
-  const [mouse, setMouse] = useState({ x: 0, y: 0 })
-
+function InsightCard({ title, icon, items, dotClass }: { title: string; icon: ReactNode; items: string[]; dotClass: string }) {
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 26 }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.25 }}
-      transition={{ duration: 0.45, delay }}
-      whileHover={{ y: -6, scale: 1.01 }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 30
-        const y = ((e.clientY - rect.top) / rect.height - 0.5) * 30
-        setMouse({ x, y })
-      }}
-      onMouseLeave={() => setMouse({ x: 0, y: 0 })}
-      className="relative overflow-hidden rounded-3xl border border-white/20 p-5 bg-white/5 backdrop-blur-xl"
-      style={{
-        backgroundImage: `radial-gradient(circle at ${50 + mouse.x}% ${50 + mouse.y}%, rgba(0,217,255,0.18), transparent 40%), linear-gradient(160deg, rgba(147,51,234,0.18), rgba(15,23,42,0.72))`,
-      }}
+      viewport={{ once: false, amount: 0.2 }}
+      whileHover={{ y: -5, scale: 1.01 }}
+      transition={{ duration: 0.3 }}
+      className="rounded-2xl border border-white/20 p-4 bg-white/10 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
     >
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h3 className="text-3xl font-semibold">{card.title}</h3>
-        <span className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-xl">{card.score}%</span>
-      </div>
-      <div className="h-2.5 rounded-full bg-white/15 mb-4">
-        <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${card.score}%` }} />
-      </div>
-      <p className="text-[#d6ddef] text-xl leading-relaxed">{card.description}</p>
-      <div className="mt-5 text-emerald-300 text-2xl font-semibold inline-flex items-center gap-2">
-        <TrendingUp size={22} /> {card.salary}
-      </div>
-    </motion.article>
+      <h3 className="text-xl md:text-2xl font-semibold mb-2 inline-flex items-center gap-2">{icon}{title}</h3>
+      <ul className="space-y-1.5 text-base md:text-lg text-[#d7deea]">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2"><span className={`${dotClass} mt-1.5`}>●</span><span>{item}</span></li>
+        ))}
+      </ul>
+    </motion.div>
   )
 }
 
@@ -103,8 +79,7 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
     const run = async () => {
       setIsLoading(true)
       try {
-        await api.post(`/analyze/${documentId}`)
-        const response = await api.get<Analysis>(`/analysis/${documentId}`)
+        const response = await api.post<Analysis>(`/analyze/${documentId}`)
         setAnalysis(response.data)
       } finally {
         setIsLoading(false)
@@ -134,71 +109,41 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(5,8,18,0.75),rgba(5,8,18,0.8))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.35),transparent_58%)]" />
 
-        <div className="relative z-10 max-w-[1180px] mx-auto">
+        <div className="relative z-10 max-w-[1080px] mx-auto">
           {isLoading ? (
             <AnalysisLoader />
           ) : (
             <>
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-8">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-7">
                 <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-                  <Brain className="text-cyan-300" size={48} />
+                  <Brain className="text-cyan-300" size={44} />
                 </motion.div>
                 <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
-                <p className="text-[#d2d9e7] text-lg md:text-xl mt-3">CV-based analysis and profession-fit insights generated from your uploaded document</p>
+                <p className="text-[#d2d9e7] text-base md:text-lg mt-2">CV-based analysis generated from your uploaded document</p>
               </motion.div>
 
-              <div className="grid lg:grid-cols-2 gap-4 mb-4">
-                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><Target className="text-cyan-300" size={24} /> Best Fit Professions</h3>
-                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
-                    {(professions.length ? professions : ['No strong profession match detected yet.']).map((item) => (
-                      <li key={item} className="flex items-start gap-3"><span className="text-cyan-300 mt-1.5">●</span><span>{item}</span></li>
-                    ))}
-                  </ul>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><CircleCheckBig className="text-emerald-300" size={24} /> Current Strengths</h3>
-                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
-                    {(strengths.length ? strengths : ['No explicit strengths detected from CV text.']).map((item) => (
-                      <li key={item} className="flex items-start gap-3"><span className="text-emerald-300 mt-1.5">●</span><span>{item}</span></li>
-                    ))}
-                  </ul>
-                </motion.div>
+              <div className="grid lg:grid-cols-2 gap-3 mb-3">
+                <InsightCard title="Best Fit Professions" icon={<Target className="text-cyan-300" size={20} />} items={professions.length ? professions : ['No strong profession match detected yet.']} dotClass="text-cyan-300" />
+                <InsightCard title="Current Strengths" icon={<CircleCheckBig className="text-emerald-300" size={20} />} items={strengths.length ? strengths : ['No explicit strengths detected from CV text.']} dotClass="text-emerald-300" />
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-4 mb-4">
-                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><CircleDot className="text-violet-300" size={24} /> Detected Skills</h3>
-                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
-                    {(skills.length ? skills : ['No explicit technical skills found in CV.']).map((item) => (
-                      <li key={item} className="flex items-start gap-3"><span className="text-violet-300 mt-1.5">●</span><span>{item}</span></li>
-                    ))}
-                  </ul>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><LoaderCircle className="text-pink-300" size={24} /> Areas to Improve</h3>
-                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
-                    {(improvements.length ? improvements : ['No major gaps detected from available CV text.']).map((item) => (
-                      <li key={item} className="flex items-start gap-3"><span className="text-pink-300 mt-1.5">●</span><span>{item}</span></li>
-                    ))}
-                  </ul>
-                </motion.div>
+              <div className="grid lg:grid-cols-2 gap-3 mb-3">
+                <InsightCard title="Detected Skills" icon={<CircleDot className="text-violet-300" size={20} />} items={skills.length ? skills : ['No explicit technical skills found in CV.']} dotClass="text-violet-300" />
+                <InsightCard title="Areas to Improve" icon={<LoaderCircle className="text-pink-300" size={20} />} items={improvements.length ? improvements : ['No major gaps detected from available CV text.']} dotClass="text-pink-300" />
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-                <h3 className="text-2xl md:text-3xl font-semibold mb-3">Document Summary</h3>
-                <p className="text-lg md:text-xl text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
-                <p className="text-base text-cyan-300 mt-4">Document Type: {analysis?.classification || 'Unknown'}</p>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-white/10 backdrop-blur-xl">
+                <h3 className="text-xl md:text-2xl font-semibold mb-2">Document Summary</h3>
+                <p className="text-base md:text-lg text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
+                <p className="text-sm text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
               </motion.div>
 
-              <div className="mt-8 flex justify-center">
+              <div className="mt-7 flex justify-center">
                 <motion.button
                   whileHover={{ scale: 1.03, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => navigate('/dashboard')}
-                  className="px-10 py-4 rounded-2xl text-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
+                  className="px-8 py-3 rounded-2xl text-lg font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
                 >
                   Start New Analyse
                 </motion.button>
