@@ -127,6 +127,53 @@ function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
   )
 }
 
+function FinalLaunchCard({ onEnter }: { onEnter: () => void }) {
+  const [mouse, setMouse] = useState({ x: 50, y: 50 })
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      whileHover={{ y: -5, scale: 1.01 }}
+      viewport={{ once: true, amount: 0.35 }}
+      transition={{ duration: 0.55 }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = ((e.clientX - rect.left) / rect.width) * 100
+        const y = ((e.clientY - rect.top) / rect.height) * 100
+        setMouse({ x, y })
+      }}
+      className="relative overflow-hidden rounded-2xl border border-white/20 p-8 md:p-10 text-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      style={{
+        backgroundImage: `radial-gradient(circle at ${mouse.x}% ${mouse.y}%, rgba(0,217,255,0.14), transparent 40%), linear-gradient(130deg, rgba(124,58,237,0.18), rgba(0,0,0,0.6), rgba(0,217,255,0.14))`,
+      }}
+    >
+      <motion.div
+        className="flex justify-center mb-4"
+        animate={{ y: [0, -6, 0], rotate: [-4, 4, -4] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <Rocket size={40} className="text-cyan-300" />
+      </motion.div>
+
+      <h3 className="text-4xl md:text-6xl font-semibold mb-3">Ready to Launch Your Career?</h3>
+      <p className="text-[#c7d0de] text-lg md:text-2xl mb-6">Join thousands of professionals who've found their perfect path</p>
+
+      <motion.button
+        onClick={onEnter}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.98 }}
+        className="inline-flex items-center gap-3 px-8 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-xl font-semibold shadow-[0_0_30px_rgba(124,58,237,0.65)]"
+      >
+        Start Your Analysis
+        <motion.span animate={{ x: [0, 4, 0], y: [0, -2, 0] }} transition={{ duration: 1.6, repeat: Infinity }}>
+          <Rocket size={20} />
+        </motion.span>
+      </motion.button>
+    </motion.div>
+  )
+}
+
 export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const { scrollY } = useScroll()
   const scrollOpacity = useTransform(scrollY, [0, 90], [1, 0])
@@ -135,8 +182,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
 
   const bgStyle = useMemo(
     () => ({
-      backgroundImage:
-        "url('https://images.unsplash.com/photo-1567789884554-0b844b597180?auto=format&fit=crop&w=2000&q=80')",
+      backgroundImage: "url('https://wallstreetpit.com/wp-content/uploads/news/ai-cg/AI5-G.jpg')",
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     }),
@@ -172,12 +218,17 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.
           </p>
 
-          <button
+          <motion.button
             onClick={onEnter}
-            className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] hover:scale-[1.03] transition font-semibold text-2xl"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-2xl"
           >
-            Begin Your Journey <Rocket size={24} />
-          </button>
+            Begin Your Journey
+            <motion.span animate={{ x: [0, 3, 0], y: [0, -2, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+              <Rocket size={24} />
+            </motion.span>
+          </motion.button>
 
           <motion.div style={{ opacity: scrollOpacity, y: scrollYPos }} className="mt-5 flex flex-col items-center text-[#a0aec0]" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.8, repeat: Infinity }}>
             <ChevronDown className="text-cyan-300" />
@@ -268,7 +319,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         </div>
       </section>
 
-      <section className="relative px-8 lg:px-12 pb-20 pt-6 max-w-[1280px] mx-auto">
+      <section className="relative px-8 lg:px-12 pb-16 pt-6 max-w-[1280px] mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -302,6 +353,10 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             delay={0.22}
           />
         </div>
+      </section>
+
+      <section className="relative px-8 lg:px-12 pb-24 pt-6 max-w-[980px] mx-auto">
+        <FinalLaunchCard onEnter={onEnter} />
       </section>
     </div>
   )
