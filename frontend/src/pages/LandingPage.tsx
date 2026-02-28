@@ -130,7 +130,7 @@ function LandingFooter() {
       <div className="max-w-[1280px] mx-auto px-8 lg:px-12 py-12">
         <div className="grid md:grid-cols-[1.3fr_1fr_1fr] gap-10">
           <div>
-            <div className="flex items-center gap-3 mb-4"><Brain className="text-violet-400" /><h4 className="text-3xl font-semibold bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">AI Career System</h4></div>
+            <div className="flex items-center gap-3 mb-4"><Brain className="text-violet-400" /><h4 className="text-3xl font-semibold bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">Orbit Intel-AI</h4></div>
             <p className="text-[#aab3c2] text-lg max-w-md">Empowering your future with intelligent career guidance powered by advanced AI technology.</p>
             <div className="flex flex-wrap gap-3 mt-5">
               <a aria-label="GitHub" href="https://github.com/skumalo0115-commits" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Github /></a>
@@ -158,7 +158,7 @@ function LandingFooter() {
           </form>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/10 text-center text-[#97a3b7] text-lg">© 2026 AI Career System. All rights reserved.</div>
+        <div className="mt-8 pt-6 border-t border-white/10 text-center text-[#97a3b7] text-lg">© 2026 Orbit Intel-AI. All rights reserved.</div>
       </div>
     </footer>
   )

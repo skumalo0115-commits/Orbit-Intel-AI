@@ -122,7 +122,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             <p className="text-[#d2d9e7] text-2xl mt-2">Next-generation career guidance powered by artificial intelligence</p>
           </div>
 
-          <div className="glass-card p-7 md:p-8 max-w-5xl mx-auto">
+          <div className="glass-card p-6 md:p-7 max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <Sparkles className="text-violet-300" />
               <h2 className="text-5xl font-semibold">Enter Your Profile</h2>
