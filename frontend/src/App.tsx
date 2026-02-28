@@ -75,7 +75,7 @@ export default function App() {
       <SpaceBackground />
       <MouseGlow />
       {isAuthenticated && <Navbar onLogout={logout} />}
-      <div className="lg:grid lg:grid-cols-[260px_1fr] min-h-screen">
+      <div className={isAuthenticated ? "lg:grid lg:grid-cols-[260px_1fr] min-h-screen" : "min-h-screen"}>
         {isAuthenticated && <div className="hidden lg:block p-6 pt-28"><Sidebar /></div>}
         <main>
           <Routes>
