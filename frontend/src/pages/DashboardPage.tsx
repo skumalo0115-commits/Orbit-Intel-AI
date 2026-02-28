@@ -122,7 +122,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             <p className="text-[#d2d9e7] text-2xl mt-2">Next-generation career guidance powered by artificial intelligence</p>
           </div>
 
-          <div className="glass-card p-7 md:p-8 max-w-5xl mx-auto">
+          <div className="glass-card p-6 md:p-7 max-w-4xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <Sparkles className="text-violet-300" />
               <h2 className="text-5xl font-semibold">Enter Your Profile</h2>
@@ -135,7 +135,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             <textarea value={interests} onChange={(e) => setInterests(e.target.value)} className="w-full h-40 rounded-2xl border border-violet-400/45 bg-white/10 p-4 text-2xl mb-5" placeholder="e.g., Building innovative products, solving complex problems, working with data..." />
 
             <label className="block text-2xl mb-2 text-white/90">Upload CV (Optional)</label>
-            <label className="w-full rounded-2xl border border-dashed border-violet-400/50 bg-cyan-500/10 p-8 text-center block cursor-pointer mb-6">
+            <label className="w-full rounded-2xl border border-dashed border-violet-400/50 bg-cyan-500/10 p-5 text-center block cursor-pointer mb-6 text-xl">
               <Upload className="inline mr-2" /> Drop your CV here or click to browse
               <input type="file" className="hidden" onChange={(e) => setCvFile(e.target.files?.[0] ?? null)} />
             </label>
