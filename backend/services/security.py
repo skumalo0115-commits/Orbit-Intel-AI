@@ -5,8 +5,9 @@ from passlib.context import CryptContext
 
 from backend.database.config import get_settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
+# Use PBKDF2 so local auth works reliably without binary bcrypt runtime issues.
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
