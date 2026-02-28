@@ -4,11 +4,11 @@ import { X } from 'lucide-react'
 interface DocumentCardProps {
   filename: string
   date: string
-  onAnalyze: () => void
+  onAnalyse: () => void
   onDelete: () => void
 }
 
-export default function DocumentCard({ filename, date, onAnalyze, onDelete }: DocumentCardProps) {
+export default function DocumentCard({ filename, date, onAnalyse, onDelete }: DocumentCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -27,10 +27,10 @@ export default function DocumentCard({ filename, date, onAnalyze, onDelete }: Do
         <p className="font-semibold text-white text-2xl pr-10">{filename}</p>
         <p className="text-lg text-[#A0AEC0] mt-1">Uploaded {new Date(date).toLocaleString()}</p>
         <p className="text-lg text-cyan-300 mt-2">Classification: Pending analysis</p>
-        <p className="text-lg text-white/70">Summary preview: Analyze this file to generate AI insights.</p>
+        <p className="text-lg text-white/70">Summary preview: Analyse this file to generate AI insights.</p>
       </div>
-      <button className="px-5 py-3 rounded-xl border border-cyan-300/50 text-cyan-200 shadow-neon hover:bg-cyan-400/15 text-2xl" onClick={onAnalyze}>
-        Analyze
+      <button className="px-5 py-3 rounded-xl border border-cyan-300/50 text-cyan-200 shadow-neon hover:bg-cyan-400/15 text-2xl" onClick={onAnalyse}>
+        Analyse
       </button>
     </motion.div>
   )

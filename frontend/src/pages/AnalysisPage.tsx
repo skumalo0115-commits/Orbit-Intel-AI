@@ -36,21 +36,21 @@ function InteractiveCard({ card, delay }: { card: MatchCard; delay: number }) {
         setMouse({ x, y })
       }}
       onMouseLeave={() => setMouse({ x: 0, y: 0 })}
-      className="relative overflow-hidden rounded-3xl border border-white/20 p-7 bg-white/5 backdrop-blur-xl"
+      className="relative overflow-hidden rounded-3xl border border-white/20 p-5 bg-white/5 backdrop-blur-xl"
       style={{
         backgroundImage: `radial-gradient(circle at ${50 + mouse.x}% ${50 + mouse.y}%, rgba(0,217,255,0.18), transparent 40%), linear-gradient(160deg, rgba(147,51,234,0.18), rgba(15,23,42,0.72))`,
       }}
     >
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h3 className="text-4xl font-semibold">{card.title}</h3>
-        <span className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-2xl">{card.score}%</span>
+        <h3 className="text-3xl font-semibold">{card.title}</h3>
+        <span className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-xl">{card.score}%</span>
       </div>
-      <div className="h-3 rounded-full bg-white/15 mb-5">
+      <div className="h-2.5 rounded-full bg-white/15 mb-4">
         <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${card.score}%` }} />
       </div>
-      <p className="text-[#d6ddef] text-2xl leading-relaxed">{card.description}</p>
-      <div className="mt-6 text-emerald-300 text-3xl font-semibold inline-flex items-center gap-2">
-        <TrendingUp size={26} /> {card.salary}
+      <p className="text-[#d6ddef] text-xl leading-relaxed">{card.description}</p>
+      <div className="mt-5 text-emerald-300 text-2xl font-semibold inline-flex items-center gap-2">
+        <TrendingUp size={22} /> {card.salary}
       </div>
     </motion.article>
   )
@@ -123,38 +123,38 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
         <div className="relative z-10 max-w-[1380px] mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-10">
             <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-              <Brain className="text-cyan-300" size={64} />
+              <Brain className="text-cyan-300" size={52} />
             </motion.div>
-            <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
-            <p className="text-[#d2d9e7] text-2xl mt-3">Next-generation career guidance powered by artificial intelligence</p>
+            <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
+            <p className="text-[#d2d9e7] text-lg md:text-xl mt-3">Next-generation career guidance powered by artificial intelligence</p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mb-6 flex items-center gap-3">
-            <Target className="text-cyan-300" size={38} />
-            <h2 className="text-5xl font-semibold">Top Career Matches</h2>
+            <Target className="text-cyan-300" size={30} />
+            <h2 className="text-4xl font-semibold">Top Career Matches</h2>
           </motion.div>
 
-          <div className="grid xl:grid-cols-3 gap-5 mb-6">
+          <div className="grid xl:grid-cols-3 gap-4 mb-6">
             {cards.map((card, idx) => (
               <InteractiveCard key={card.title} card={card} delay={idx * 0.08} />
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-5">
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-7 bg-white/10 backdrop-blur-xl">
-              <h3 className="text-5xl font-semibold mb-5 inline-flex items-center gap-3"><CircleDot className="text-violet-300" /> Skills to Develop</h3>
-              <ul className="space-y-3 text-3xl text-[#d7deea]">
+          <div className="grid lg:grid-cols-2 gap-4">
+            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+              <h3 className="text-3xl md:text-4xl font-semibold mb-4 inline-flex items-center gap-3"><CircleDot className="text-violet-300" /> Skills to Develop</h3>
+              <ul className="space-y-2 text-xl md:text-2xl text-[#d7deea]">
                 {skillItems.map((item) => (
                   <li key={item} className="flex items-start gap-3"><span className="text-cyan-300 mt-2.5">●</span><span>{item}</span></li>
                 ))}
               </ul>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-7 bg-white/10 backdrop-blur-xl">
-              <h3 className="text-5xl font-semibold mb-5 inline-flex items-center gap-3"><BookOpen className="text-pink-300" /> Learning Path</h3>
-              <ol className="space-y-3 text-3xl text-[#d7deea]">
+            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+              <h3 className="text-3xl md:text-4xl font-semibold mb-4 inline-flex items-center gap-3"><BookOpen className="text-pink-300" /> Learning Path</h3>
+              <ol className="space-y-2 text-xl md:text-2xl text-[#d7deea]">
                 {learningPath.map((item, idx) => (
-                  <li key={item} className="flex items-start gap-3"><span className="w-10 h-10 rounded-full bg-violet-500/35 text-center leading-10 text-2xl">{idx + 1}</span><span>{item}</span></li>
+                  <li key={item} className="flex items-start gap-3"><span className="w-8 h-8 rounded-full bg-violet-500/35 text-center leading-8 text-lg">{idx + 1}</span><span>{item}</span></li>
                 ))}
               </ol>
             </motion.div>
@@ -165,9 +165,9 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/dashboard')}
-              className="px-12 py-5 rounded-2xl text-4xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
+              className="px-10 py-4 rounded-2xl text-2xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
             >
-              Start New Analysis
+              Start New Analyse
             </motion.button>
           </div>
         </div>
