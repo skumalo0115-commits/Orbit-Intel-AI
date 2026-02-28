@@ -1,5 +1,5 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { BrainCircuit, ChevronDown, Crosshair, Rocket, Sparkles, TrendingUp } from 'lucide-react'
+import { BrainCircuit, ChevronDown, Crosshair, Rocket, Sparkles, TrendingUp, WandSparkles, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 type MiniCardProps = {
@@ -15,6 +15,13 @@ type CareerCardProps = {
   image: string
   tint: string
   delay: number
+}
+
+type HowCardProps = {
+  title: string
+  description: string
+  delay: number
+  icon: 'share' | 'analysis' | 'roadmap'
 }
 
 function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
@@ -37,21 +44,26 @@ function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
 }
 
 function CareerPathCard({ title, description, image, tint, delay }: CareerCardProps) {
-  const [mouse, setMouse] = useState({ x: 0, y: 0 })
+  const [mouse, setMouse] = useState({ x: 0, y: 0, scale: 1.1 })
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 48, scale: 0.98, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+      whileHover={{ y: -8, scale: 1.02 }}
       viewport={{ once: true, amount: 0.25 }}
       transition={{ duration: 0.7, delay }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
-        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 12
-        const y = ((e.clientY - rect.top) / rect.height - 0.5) * 12
-        setMouse({ x, y })
+        const nx = (e.clientX - rect.left) / rect.width - 0.5
+        const ny = (e.clientY - rect.top) / rect.height - 0.5
+        const x = nx * 18
+        const y = ny * 18
+        const scale = 1.1 + Math.min(0.1, Math.hypot(nx, ny) * 0.12)
+        setMouse({ x, y, scale })
       }}
-      className="relative overflow-hidden rounded-3xl border border-white/15 min-h-[270px] md:min-h-[320px]"
+      onMouseLeave={() => setMouse({ x: 0, y: 0, scale: 1.1 })}
+      className="relative overflow-hidden rounded-3xl border border-white/15 min-h-[270px] md:min-h-[320px] shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
     >
       <motion.div
         className="absolute inset-0"
@@ -60,7 +72,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
-        animate={{ scale: 1.12, x: mouse.x, y: mouse.y }}
+        animate={{ scale: mouse.scale, x: mouse.x, y: mouse.y }}
         transition={{ type: 'spring', stiffness: 90, damping: 18, mass: 0.6 }}
       />
       <div className="absolute inset-0 bg-black/25" />
@@ -91,6 +103,29 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
   )
 }
 
+function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
+  const Icon = icon === 'share' ? WandSparkles : icon === 'analysis' ? BrainCircuit : Zap
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 44, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      whileHover={{ y: -6, scale: 1.01 }}
+      viewport={{ once: true, amount: 0.35 }}
+      transition={{ duration: 0.6, delay }}
+      className="group rounded-3xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.15),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-7 md:p-8 flex items-center gap-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+    >
+      <div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-500 to-cyan-400 text-white shrink-0 group-hover:scale-110 transition">
+        <Icon size={34} />
+      </div>
+      <div>
+        <h3 className="text-5xl font-semibold mb-2">{title}</h3>
+        <p className="text-[#c7d0de] text-2xl">{description}</p>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const { scrollY } = useScroll()
   const scrollOpacity = useTransform(scrollY, [0, 90], [1, 0])
@@ -100,7 +135,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const bgStyle = useMemo(
     () => ({
       backgroundImage:
-        "url('https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1800&q=80')",
+        "url('https://source.unsplash.com/1800x1100/?robotics,manufacturing,assembly,ai')",
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     }),
@@ -228,6 +263,42 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             image="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1600&q=80"
             tint="linear-gradient(180deg, rgba(81,26,121,0.12), rgba(123,52,183,0.45))"
             delay={0.29}
+          />
+        </div>
+      </section>
+
+      <section className="relative px-8 lg:px-12 pb-28 pt-8">
+        <motion.div
+          initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-12"
+        >
+          <h2 className="font-['Space_Grotesk'] text-6xl md:text-7xl font-bold tracking-[-0.02em] bg-gradient-to-r from-pink-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
+            How It Works
+          </h2>
+          <p className="text-[#C5CFDD] text-2xl mt-4">Three simple steps to your dream career</p>
+        </motion.div>
+
+        <div className="space-y-8">
+          <HowItWorksCard
+            icon="share"
+            title="Share Your Profile"
+            description="Tell us about your skills, interests, and career aspirations."
+            delay={0.06}
+          />
+          <HowItWorksCard
+            icon="analysis"
+            title="AI Analysis"
+            description="Our advanced AI analyzes thousands of career paths to find your perfect matches."
+            delay={0.14}
+          />
+          <HowItWorksCard
+            icon="roadmap"
+            title="Get Your Roadmap"
+            description="Receive personalized recommendations and a clear path to success."
+            delay={0.22}
           />
         </div>
       </section>
