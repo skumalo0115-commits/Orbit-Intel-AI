@@ -30,40 +30,41 @@ function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 48, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, amount: 0.35 }}
-      transition={{ duration: 0.65, delay }}
-      className="rounded-3xl border border-white/20 bg-white/[0.03] backdrop-blur-xl p-6 min-h-[210px] shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+      transition={{ duration: 0.55, delay }}
+      whileHover={{ y: -5, scale: 1.01 }}
+      className="rounded-2xl border border-white/20 bg-white/[0.03] backdrop-blur-xl p-5 min-h-[170px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
     >
-      <Icon size={34} style={{ color }} className="mb-5" />
-      <h3 className="text-3xl font-semibold mb-3">{title}</h3>
-      <p className="text-[#bfc7d6] text-xl leading-relaxed">{description}</p>
+      <Icon size={28} style={{ color }} className="mb-3" />
+      <h3 className="text-2xl font-semibold mb-2">{title}</h3>
+      <p className="text-[#bfc7d6] text-base leading-relaxed">{description}</p>
     </motion.div>
   )
 }
 
 function CareerPathCard({ title, description, image, tint, delay }: CareerCardProps) {
-  const [mouse, setMouse] = useState({ x: 0, y: 0, scale: 1.1 })
+  const [mouse, setMouse] = useState({ x: 0, y: 0, scale: 1.08 })
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 48, scale: 0.98, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 42, scale: 0.985, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{ y: -6, scale: 1.01 }}
       viewport={{ once: true, amount: 0.25 }}
-      transition={{ duration: 0.7, delay }}
+      transition={{ duration: 0.6, delay }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
         const nx = (e.clientX - rect.left) / rect.width - 0.5
         const ny = (e.clientY - rect.top) / rect.height - 0.5
-        const x = nx * 18
-        const y = ny * 18
-        const scale = 1.1 + Math.min(0.1, Math.hypot(nx, ny) * 0.12)
+        const x = nx * 14
+        const y = ny * 14
+        const scale = 1.08 + Math.min(0.08, Math.hypot(nx, ny) * 0.1)
         setMouse({ x, y, scale })
       }}
-      onMouseLeave={() => setMouse({ x: 0, y: 0, scale: 1.1 })}
-      className="relative overflow-hidden rounded-3xl border border-white/15 min-h-[270px] md:min-h-[320px] shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+      onMouseLeave={() => setMouse({ x: 0, y: 0, scale: 1.08 })}
+      className="relative overflow-hidden rounded-2xl border border-white/15 min-h-[210px] md:min-h-[240px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
     >
       <motion.div
         className="absolute inset-0"
@@ -75,26 +76,26 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
         animate={{ scale: mouse.scale, x: mouse.x, y: mouse.y }}
         transition={{ type: 'spring', stiffness: 90, damping: 18, mass: 0.6 }}
       />
-      <div className="absolute inset-0 bg-black/25" />
+      <div className="absolute inset-0 bg-black/28" />
       <div className="absolute inset-0" style={{ background: tint }} />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
 
-      <div className="absolute bottom-7 left-7 z-10">
+      <div className="absolute bottom-4 left-5 z-10">
         <motion.h3
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.8 }}
-          transition={{ duration: 0.45, delay: delay + 0.08 }}
-          className="text-5xl font-semibold"
+          transition={{ duration: 0.35, delay: delay + 0.06 }}
+          className="text-3xl md:text-4xl font-semibold"
         >
           {title}
         </motion.h3>
         <motion.p
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.8 }}
-          transition={{ duration: 0.45, delay: delay + 0.16 }}
-          className="text-[#d7deea] text-2xl mt-2"
+          transition={{ duration: 0.35, delay: delay + 0.12 }}
+          className="text-[#d7deea] text-lg md:text-xl mt-1"
         >
           {description}
         </motion.p>
@@ -108,19 +109,19 @@ function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 44, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 34, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      whileHover={{ y: -6, scale: 1.01 }}
+      whileHover={{ y: -4, scale: 1.005 }}
       viewport={{ once: true, amount: 0.35 }}
-      transition={{ duration: 0.6, delay }}
-      className="group rounded-3xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.15),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-7 md:p-8 flex items-center gap-6 shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+      transition={{ duration: 0.5, delay }}
+      className="group rounded-2xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.14),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-5 md:p-6 flex items-center gap-4 shadow-[0_8px_24px_rgba(0,0,0,0.38)]"
     >
-      <div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-500 to-cyan-400 text-white shrink-0 group-hover:scale-110 transition">
-        <Icon size={34} />
+      <div className="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-500 to-cyan-400 text-white shrink-0 group-hover:scale-110 transition">
+        <Icon size={24} />
       </div>
       <div>
-        <h3 className="text-5xl font-semibold mb-2">{title}</h3>
-        <p className="text-[#c7d0de] text-2xl">{description}</p>
+        <h3 className="text-2xl md:text-3xl font-semibold mb-1">{title}</h3>
+        <p className="text-[#c7d0de] text-lg md:text-xl">{description}</p>
       </div>
     </motion.div>
   )
@@ -135,7 +136,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const bgStyle = useMemo(
     () => ({
       backgroundImage:
-        "url('https://source.unsplash.com/1800x1100/?robotics,manufacturing,assembly,ai')",
+        "url('https://images.unsplash.com/photo-1567789884554-0b844b597180?auto=format&fit=crop&w=2000&q=80')",
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     }),
@@ -185,21 +186,21 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         </motion.div>
       </section>
 
-      <section className="relative px-8 lg:px-12 pb-24 pt-14">
+      <section className="relative px-8 lg:px-12 pb-14 pt-10 max-w-[1280px] mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+          initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8"
         >
-          <h2 className="font-['Space_Grotesk'] text-6xl md:text-7xl font-bold tracking-[-0.02em] bg-gradient-to-r from-violet-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent">
+          <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-violet-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent">
             Powered by Intelligence
           </h2>
-          <p className="text-[#C5CFDD] text-2xl mt-4">Next-generation career guidance at your fingertips</p>
+          <p className="text-[#C5CFDD] text-xl mt-3">Next-generation career guidance at your fingertips</p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4">
           <MiniFeatureCard
             icon="analysis"
             title="AI Analysis"
@@ -221,21 +222,21 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         </div>
       </section>
 
-      <section className="relative px-8 lg:px-12 pb-28 pt-8">
+      <section className="relative px-8 lg:px-12 pb-16 pt-6 max-w-[1280px] mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+          initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: true, amount: 0.35 }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8"
         >
-          <h2 className="font-['Space_Grotesk'] text-6xl md:text-7xl font-bold tracking-[-0.02em] bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">
+          <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">
             Explore Career Paths
           </h2>
-          <p className="text-[#C5CFDD] text-2xl mt-4">Discover opportunities across diverse industries</p>
+          <p className="text-[#C5CFDD] text-xl mt-3">Discover opportunities across diverse industries</p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-7">
+        <div className="grid md:grid-cols-2 gap-5">
           <CareerPathCard
             title="Tech & Engineering"
             description="Shape the future with cutting-edge technology"
@@ -267,21 +268,21 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         </div>
       </section>
 
-      <section className="relative px-8 lg:px-12 pb-28 pt-8">
+      <section className="relative px-8 lg:px-12 pb-20 pt-6 max-w-[1280px] mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+          initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: true, amount: 0.35 }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8"
         >
-          <h2 className="font-['Space_Grotesk'] text-6xl md:text-7xl font-bold tracking-[-0.02em] bg-gradient-to-r from-pink-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
+          <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-pink-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">
             How It Works
           </h2>
-          <p className="text-[#C5CFDD] text-2xl mt-4">Three simple steps to your dream career</p>
+          <p className="text-[#C5CFDD] text-xl mt-3">Three simple steps to your dream career</p>
         </motion.div>
 
-        <div className="space-y-8">
+        <div className="space-y-4">
           <HowItWorksCard
             icon="share"
             title="Share Your Profile"
