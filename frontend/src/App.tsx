@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import MouseGlow from './components/MouseGlow'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
@@ -63,6 +63,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: () => void }) {
 export default function App() {
   const { isAuthenticated, saveToken, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const authRefresh = () => {
@@ -72,8 +73,8 @@ export default function App() {
 
   return (
     <>
-      <SpaceBackground />
-      <MouseGlow />
+      {location.pathname !== "/" && <SpaceBackground />}
+      {location.pathname !== "/" && <MouseGlow />}
       {isAuthenticated && <Navbar onLogout={logout} />}
       <div className={isAuthenticated ? "lg:grid lg:grid-cols-[260px_1fr] min-h-screen" : "min-h-screen"}>
         {isAuthenticated && <div className="hidden lg:block p-6 pt-28"><Sidebar /></div>}
