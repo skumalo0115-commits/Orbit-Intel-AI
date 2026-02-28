@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pdfplumber
-import pytesseract
 from docx import Document as DocxDocument
 from PIL import Image
 
@@ -25,9 +23,11 @@ class TextExtractor:
     @staticmethod
     def _extract_pdf(path: Path) -> str:
         lines: list[str] = []
-        with pdfplumber.open(str(path)) as pdf:
-            for page in pdf.pages:
-                lines.append(page.extract_text() or "")
+        import fitz
+
+        with fitz.open(str(path)) as pdf:
+            for page in pdf:
+                lines.append(page.get_text("text") or "")
         return "\n".join(lines).strip()
 
     @staticmethod
@@ -37,5 +37,17 @@ class TextExtractor:
 
     @staticmethod
     def _extract_image(path: Path) -> str:
-        image = Image.open(path)
-        return pytesseract.image_to_string(image).strip()
+        try:
+            import easyocr
+
+            reader = easyocr.Reader(["en"], gpu=False)
+            result = reader.readtext(str(path), detail=0)
+            return " ".join(result).strip()
+        except Exception:
+            try:
+                import pytesseract
+
+                image = Image.open(path)
+                return pytesseract.image_to_string(image).strip()
+            except Exception:
+                return ""
