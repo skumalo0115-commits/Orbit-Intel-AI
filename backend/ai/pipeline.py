@@ -33,17 +33,30 @@ class AIPipeline:
                 "classification": "Unknown",
                 "entities": [],
                 "embeddings": [],
-                "insights": {"word_count": 0, "confidence": 0.0},
+                "insights": {
+                    "word_count": 0,
+                    "confidence": 0.0,
+                    "detected_skills": [],
+                    "recommended_professions": [],
+                    "improvement_areas": [],
+                    "strengths": [],
+                },
             }
 
         summary = self._summarize(trimmed)
         classification = self._classify(trimmed)
         entities = self._entities(trimmed)
         embedding = self._embedding(summary or trimmed)
+        career = self._career_insights(trimmed, entities)
+
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
+            "detected_skills": career["detected_skills"],
+            "recommended_professions": career["recommended_professions"],
+            "improvement_areas": career["improvement_areas"],
+            "strengths": career["strengths"],
         }
         return {
             "summary": summary,
@@ -68,7 +81,7 @@ class AIPipeline:
             content = text.lower()
             if "invoice" in content:
                 return "Invoice"
-            if "curriculum" in content or "resume" in content:
+            if "curriculum" in content or "resume" in content or "cv" in content:
                 return "CV"
             if "agreement" in content or "contract" in content:
                 return "Contract"
@@ -91,6 +104,59 @@ class AIPipeline:
             return np.asarray(vector).astype(float).tolist()
         except Exception:
             return []
+
+    def _career_insights(self, text: str, entities: list[dict[str, Any]]) -> dict[str, list[str]]:
+        content = text.lower()
+        profile_map = {
+            "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git"],
+            "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting"],
+            "Data Scientist": ["machine learning", "tensorflow", "pytorch", "statistics", "pandas"],
+            "Cloud Engineer": ["aws", "azure", "gcp", "docker", "kubernetes", "devops"],
+            "Product Manager": ["product", "roadmap", "stakeholder", "strategy", "agile"],
+        }
+
+        detected_skills = sorted(
+            {
+                skill
+                for skills in profile_map.values()
+                for skill in skills
+                if skill in content
+            }
+        )
+
+        scored_profiles: list[tuple[str, int]] = []
+        for profile, skills in profile_map.items():
+            score = sum(1 for skill in skills if skill in content)
+            if score > 0:
+                scored_profiles.append((profile, score))
+
+        scored_profiles.sort(key=lambda pair: pair[1], reverse=True)
+        recommended_professions = [name for name, _ in scored_profiles[:3]]
+
+        if not recommended_professions:
+            recommended_professions = ["General Technology Role"]
+
+        top_profile = recommended_professions[0]
+        required_for_top = profile_map.get(top_profile, [])
+        missing_for_top = [skill for skill in required_for_top if skill not in detected_skills][:4]
+
+        strengths = detected_skills[:6]
+        if not strengths:
+            strengths = [entity.get("text", "") for entity in entities[:4] if entity.get("text")]
+
+        improvement_areas = [f"Build evidence of {skill.title()}" for skill in missing_for_top]
+        if not improvement_areas:
+            improvement_areas = [
+                "Add measurable project outcomes to the CV",
+                "Include certifications or proof of practical experience",
+            ]
+
+        return {
+            "detected_skills": detected_skills,
+            "recommended_professions": recommended_professions,
+            "improvement_areas": improvement_areas,
+            "strengths": strengths,
+        }
 
 
 ai_pipeline = AIPipeline()

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, BookOpen, CircleDot, Target, TrendingUp } from 'lucide-react'
+import { Brain, CircleCheckBig, CircleDot, LoaderCircle, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
 import api from '../services/api'
@@ -8,8 +8,46 @@ import api from '../services/api'
 interface Analysis {
   summary: string
   classification: string
-  entities: { text: string; type: string }[]
-  insights?: Record<string, unknown>
+  entities: { text: string; type: string; score?: number }[]
+  insights?: {
+    detected_skills?: string[]
+    recommended_professions?: string[]
+    improvement_areas?: string[]
+    strengths?: string[]
+    [key: string]: unknown
+  }
+}
+
+function AnalysisLoader() {
+  return (
+    <div className="min-h-[58vh] flex flex-col items-center justify-center text-center">
+      <div className="relative w-36 h-36 mb-8">
+        <motion.div
+          className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+        />
+        <motion.div
+          className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300"
+          animate={{ rotate: -360 }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+        />
+        <motion.div
+          className="absolute inset-[26px] rounded-full border-2 border-cyan-300/60"
+          animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      <motion.p
+        className="text-3xl md:text-4xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent"
+        animate={{ opacity: [0.5, 1, 0.5], y: [0, -2, 0] }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        Analysing your career path...
+      </motion.p>
+    </div>
+  )
 }
 
 type MatchCard = {
@@ -58,51 +96,27 @@ function InteractiveCard({ card, delay }: { card: MatchCard; delay: number }) {
 
 export default function AnalysisPage({ documentId }: { documentId: number }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
     const run = async () => {
-      await api.post(`/analyze/${documentId}`)
-      const response = await api.get<Analysis>(`/analysis/${documentId}`)
-      setAnalysis(response.data)
+      setIsLoading(true)
+      try {
+        await api.post(`/analyze/${documentId}`)
+        const response = await api.get<Analysis>(`/analysis/${documentId}`)
+        setAnalysis(response.data)
+      } finally {
+        setIsLoading(false)
+      }
     }
     run()
   }, [documentId])
 
-  const cards = useMemo<MatchCard[]>(() => {
-    const topEntity = analysis?.entities?.[0]?.text || 'AI/ML Engineer'
-    const secondEntity = analysis?.entities?.[1]?.text || 'Full Stack Developer'
-    const thirdEntity = analysis?.entities?.[2]?.text || 'Data Scientist'
-
-    return [
-      {
-        title: topEntity,
-        score: 95,
-        salary: '$120K - $180K',
-        description: 'Design and build modern AI-powered systems aligned to your strongest technical capabilities.',
-      },
-      {
-        title: secondEntity,
-        score: 88,
-        salary: '$90K - $140K',
-        description: 'Create end-to-end apps, APIs, and user experiences with strong engineering impact.',
-      },
-      {
-        title: thirdEntity,
-        score: 82,
-        salary: '$100K - $160K',
-        description: 'Extract actionable insights from complex datasets and deliver measurable business value.',
-      },
-    ]
-  }, [analysis])
-
-  const skillItems = analysis?.entities?.slice(0, 4).map((e) => e.text) ?? ['Cloud Computing (AWS/Azure)', 'Docker & Kubernetes', 'System Design', 'DevOps Practices']
-  const learningPath = [
-    'Complete advanced ML certification',
-    'Build portfolio projects',
-    'Contribute to open source',
-    'Network with industry professionals',
-  ]
+  const professions = useMemo(() => analysis?.insights?.recommended_professions ?? [], [analysis])
+  const strengths = useMemo(() => analysis?.insights?.strengths ?? [], [analysis])
+  const skills = useMemo(() => analysis?.insights?.detected_skills ?? [], [analysis])
+  const improvements = useMemo(() => analysis?.insights?.improvement_areas ?? [], [analysis])
 
   const bgStyle = useMemo(
     () => ({
@@ -118,58 +132,79 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
       <section className="relative pt-28 pb-12 px-6 overflow-hidden">
         <div className="absolute inset-0" style={bgStyle} />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(5,8,18,0.75),rgba(5,8,18,0.8))]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.4),transparent_58%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.35),transparent_58%)]" />
 
-        <div className="relative z-10 max-w-[1380px] mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-10">
-            <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-              <Brain className="text-cyan-300" size={52} />
-            </motion.div>
-            <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
-            <p className="text-[#d2d9e7] text-lg md:text-xl mt-3">Next-generation career guidance powered by artificial intelligence</p>
-          </motion.div>
+        <div className="relative z-10 max-w-[1180px] mx-auto">
+          {isLoading ? (
+            <AnalysisLoader />
+          ) : (
+            <>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-8">
+                <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
+                  <Brain className="text-cyan-300" size={48} />
+                </motion.div>
+                <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
+                <p className="text-[#d2d9e7] text-lg md:text-xl mt-3">CV-based analysis and profession-fit insights generated from your uploaded document</p>
+              </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mb-6 flex items-center gap-3">
-            <Target className="text-cyan-300" size={30} />
-            <h2 className="text-4xl font-semibold">Top Career Matches</h2>
-          </motion.div>
+              <div className="grid lg:grid-cols-2 gap-4 mb-4">
+                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><Target className="text-cyan-300" size={24} /> Best Fit Professions</h3>
+                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
+                    {(professions.length ? professions : ['No strong profession match detected yet.']).map((item) => (
+                      <li key={item} className="flex items-start gap-3"><span className="text-cyan-300 mt-1.5">●</span><span>{item}</span></li>
+                    ))}
+                  </ul>
+                </motion.div>
 
-          <div className="grid xl:grid-cols-3 gap-4 mb-6">
-            {cards.map((card, idx) => (
-              <InteractiveCard key={card.title} card={card} delay={idx * 0.08} />
-            ))}
-          </div>
+                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><CircleCheckBig className="text-emerald-300" size={24} /> Current Strengths</h3>
+                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
+                    {(strengths.length ? strengths : ['No explicit strengths detected from CV text.']).map((item) => (
+                      <li key={item} className="flex items-start gap-3"><span className="text-emerald-300 mt-1.5">●</span><span>{item}</span></li>
+                    ))}
+                  </ul>
+                </motion.div>
+              </div>
 
-          <div className="grid lg:grid-cols-2 gap-4">
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-              <h3 className="text-3xl md:text-4xl font-semibold mb-4 inline-flex items-center gap-3"><CircleDot className="text-violet-300" /> Skills to Develop</h3>
-              <ul className="space-y-2 text-xl md:text-2xl text-[#d7deea]">
-                {skillItems.map((item) => (
-                  <li key={item} className="flex items-start gap-3"><span className="text-cyan-300 mt-2.5">●</span><span>{item}</span></li>
-                ))}
-              </ul>
-            </motion.div>
+              <div className="grid lg:grid-cols-2 gap-4 mb-4">
+                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><CircleDot className="text-violet-300" size={24} /> Detected Skills</h3>
+                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
+                    {(skills.length ? skills : ['No explicit technical skills found in CV.']).map((item) => (
+                      <li key={item} className="flex items-start gap-3"><span className="text-violet-300 mt-1.5">●</span><span>{item}</span></li>
+                    ))}
+                  </ul>
+                </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
-              <h3 className="text-3xl md:text-4xl font-semibold mb-4 inline-flex items-center gap-3"><BookOpen className="text-pink-300" /> Learning Path</h3>
-              <ol className="space-y-2 text-xl md:text-2xl text-[#d7deea]">
-                {learningPath.map((item, idx) => (
-                  <li key={item} className="flex items-start gap-3"><span className="w-8 h-8 rounded-full bg-violet-500/35 text-center leading-8 text-lg">{idx + 1}</span><span>{item}</span></li>
-                ))}
-              </ol>
-            </motion.div>
-          </div>
+                <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3 inline-flex items-center gap-2"><LoaderCircle className="text-pink-300" size={24} /> Areas to Improve</h3>
+                  <ul className="space-y-2 text-lg md:text-xl text-[#d7deea]">
+                    {(improvements.length ? improvements : ['No major gaps detected from available CV text.']).map((item) => (
+                      <li key={item} className="flex items-start gap-3"><span className="text-pink-300 mt-1.5">●</span><span>{item}</span></li>
+                    ))}
+                  </ul>
+                </motion.div>
+              </div>
 
-          <div className="mt-8 flex justify-center">
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/dashboard')}
-              className="px-10 py-4 rounded-2xl text-2xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
-            >
-              Start New Analyse
-            </motion.button>
-          </div>
+              <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-3xl border border-white/20 p-5 bg-white/10 backdrop-blur-xl">
+                <h3 className="text-2xl md:text-3xl font-semibold mb-3">Document Summary</h3>
+                <p className="text-lg md:text-xl text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
+                <p className="text-base text-cyan-300 mt-4">Document Type: {analysis?.classification || 'Unknown'}</p>
+              </motion.div>
+
+              <div className="mt-8 flex justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/dashboard')}
+                  className="px-10 py-4 rounded-2xl text-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]"
+                >
+                  Start New Analyse
+                </motion.button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
