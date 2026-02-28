@@ -49,7 +49,10 @@ Use **two VS Code terminals** (backend + frontend), and keep both running.
 code .
 ```
 
-### 1) Start PostgreSQL (required for default backend config)
+### 1) Optional: Start PostgreSQL (Postgres mode only)
+
+> Default local DB is now SQLite (`sqlite:///./nebulaglass.db`) so login/register work out of the box.
+> If you prefer Postgres, start it and set `DATABASE_URL` in `.env`.
 
 ```bash
 docker compose up -d
@@ -100,7 +103,7 @@ If login/upload/analysis requests fail in the browser, check:
 - backend is running on `:8000`
 - frontend is running on `:5173`
 - `frontend/.env` has the correct `VITE_API_URL`
-- PostgreSQL container is up (`docker compose ps`)
+- if using Postgres, the container is up (`docker compose ps`)
 
 ## Railway Deployment Notes
 
