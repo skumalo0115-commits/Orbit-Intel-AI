@@ -1,5 +1,19 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { BrainCircuit, ChevronDown, Crosshair, Rocket, Sparkles, TrendingUp, WandSparkles, Zap } from 'lucide-react'
+import {
+  Brain,
+  ChevronDown,
+  Crosshair,
+  Facebook,
+  Github,
+  Globe,
+  Linkedin,
+  Rocket,
+  Sparkles,
+  TrendingUp,
+  WandSparkles,
+  Zap,
+  MessageCircle,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 type MiniCardProps = {
@@ -33,7 +47,7 @@ function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
       initial={{ opacity: 0, y: 36, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, amount: 0.35 }}
-      transition={{ duration: 0.55, delay }}
+      transition={{ duration: 0.45, delay }}
       whileHover={{ y: -5, scale: 1.01 }}
       className="rounded-2xl border border-white/20 bg-white/[0.03] backdrop-blur-xl p-5 min-h-[170px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
     >
@@ -49,18 +63,18 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 42, scale: 0.985, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 36, scale: 0.985, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      whileHover={{ y: -6, scale: 1.01 }}
+      whileHover={{ y: -8, scale: 1.015 }}
       viewport={{ once: true, amount: 0.25 }}
-      transition={{ duration: 0.6, delay }}
+      transition={{ duration: 0.45, delay }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
         const nx = (e.clientX - rect.left) / rect.width - 0.5
         const ny = (e.clientY - rect.top) / rect.height - 0.5
-        const x = nx * 14
-        const y = ny * 14
-        const scale = 1.08 + Math.min(0.08, Math.hypot(nx, ny) * 0.1)
+        const x = nx * 18
+        const y = ny * 18
+        const scale = 1.08 + Math.min(0.1, Math.hypot(nx, ny) * 0.13)
         setMouse({ x, y, scale })
       }}
       onMouseLeave={() => setMouse({ x: 0, y: 0, scale: 1.08 })}
@@ -74,7 +88,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
           backgroundPosition: 'center',
         }}
         animate={{ scale: mouse.scale, x: mouse.x, y: mouse.y }}
-        transition={{ type: 'spring', stiffness: 90, damping: 18, mass: 0.6 }}
+        transition={{ duration: 0.16, ease: 'easeOut' }}
       />
       <div className="absolute inset-0 bg-black/28" />
       <div className="absolute inset-0" style={{ background: tint }} />
@@ -85,7 +99,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.8 }}
-          transition={{ duration: 0.35, delay: delay + 0.06 }}
+          transition={{ duration: 0.28, delay: delay + 0.06 }}
           className="text-3xl md:text-4xl font-semibold"
         >
           {title}
@@ -94,7 +108,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.8 }}
-          transition={{ duration: 0.35, delay: delay + 0.12 }}
+          transition={{ duration: 0.28, delay: delay + 0.1 }}
           className="text-[#d7deea] text-lg md:text-xl mt-1"
         >
           {description}
@@ -105,15 +119,15 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
 }
 
 function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
-  const Icon = icon === 'share' ? WandSparkles : icon === 'analysis' ? BrainCircuit : Zap
+  const Icon = icon === 'share' ? WandSparkles : icon === 'analysis' ? Brain : Zap
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 34, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      whileHover={{ y: -4, scale: 1.005 }}
+      whileHover={{ y: -4, scale: 1.01 }}
       viewport={{ once: true, amount: 0.35 }}
-      transition={{ duration: 0.5, delay }}
+      transition={{ duration: 0.42, delay }}
       className="group rounded-2xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.14),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-5 md:p-6 flex items-center gap-4 shadow-[0_8px_24px_rgba(0,0,0,0.38)]"
     >
       <div className="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-500 to-cyan-400 text-white shrink-0 group-hover:scale-110 transition">
@@ -132,45 +146,87 @@ function FinalLaunchCard({ onEnter }: { onEnter: () => void }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+      initial={{ opacity: 0, y: 26, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      whileHover={{ y: -5, scale: 1.01 }}
+      whileHover={{ y: -6, scale: 1.012 }}
       viewport={{ once: true, amount: 0.35 }}
-      transition={{ duration: 0.55 }}
+      transition={{ duration: 0.45 }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
         const x = ((e.clientX - rect.left) / rect.width) * 100
         const y = ((e.clientY - rect.top) / rect.height) * 100
         setMouse({ x, y })
       }}
-      className="relative overflow-hidden rounded-2xl border border-white/20 p-8 md:p-10 text-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      className="relative overflow-hidden rounded-2xl border border-white/20 p-7 md:p-8 text-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
       style={{
-        backgroundImage: `radial-gradient(circle at ${mouse.x}% ${mouse.y}%, rgba(0,217,255,0.14), transparent 40%), linear-gradient(130deg, rgba(124,58,237,0.18), rgba(0,0,0,0.6), rgba(0,217,255,0.14))`,
+        backgroundImage: `radial-gradient(circle at ${mouse.x}% ${mouse.y}%, rgba(0,217,255,0.18), transparent 38%), linear-gradient(130deg, rgba(124,58,237,0.18), rgba(0,0,0,0.6), rgba(0,217,255,0.14))`,
       }}
     >
       <motion.div
-        className="flex justify-center mb-4"
-        animate={{ y: [0, -6, 0], rotate: [-4, 4, -4] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+        className="flex justify-center mb-3"
+        animate={{ y: [0, -7, 0], rotate: [-5, 5, -5] }}
+        transition={{ duration: 1.7, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <Rocket size={40} className="text-cyan-300" />
+        <Rocket size={34} className="text-cyan-300" />
       </motion.div>
 
-      <h3 className="text-4xl md:text-6xl font-semibold mb-3">Ready to Launch Your Career?</h3>
-      <p className="text-[#c7d0de] text-lg md:text-2xl mb-6">Join thousands of professionals who've found their perfect path</p>
+      <h3 className="text-3xl md:text-5xl font-semibold mb-2">Ready to Launch Your Career?</h3>
+      <p className="text-[#c7d0de] text-base md:text-xl mb-5">Join thousands of professionals who've found their perfect path</p>
 
       <motion.button
         onClick={onEnter}
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.98 }}
-        className="inline-flex items-center gap-3 px-8 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-xl font-semibold shadow-[0_0_30px_rgba(124,58,237,0.65)]"
+        className="inline-flex items-center gap-3 px-7 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-lg md:text-xl font-semibold shadow-[0_0_30px_rgba(124,58,237,0.65)]"
       >
         Start Your Analysis
-        <motion.span animate={{ x: [0, 4, 0], y: [0, -2, 0] }} transition={{ duration: 1.6, repeat: Infinity }}>
-          <Rocket size={20} />
+        <motion.span animate={{ x: [0, 6, 0], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
+          <Rocket size={18} />
         </motion.span>
       </motion.button>
     </motion.div>
+  )
+}
+
+function LandingFooter() {
+  return (
+    <footer className="border-t border-white/15 mt-6">
+      <div className="max-w-[1280px] mx-auto px-8 lg:px-12 py-12">
+        <div className="grid md:grid-cols-[1.3fr_1fr_1fr] gap-10">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <Brain className="text-violet-400" />
+              <h4 className="text-3xl font-semibold bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">AI Career System</h4>
+            </div>
+            <p className="text-[#aab3c2] text-lg max-w-md">Empowering your future with intelligent career guidance powered by advanced AI technology.</p>
+          </div>
+
+          <div>
+            <h5 className="text-2xl font-semibold text-violet-300 mb-3">Connect</h5>
+            <div className="flex flex-wrap gap-3">
+              <a aria-label="GitHub" href="https://github.com/skumalo0115-commits" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Github /></a>
+              <a aria-label="LinkedIn" href="https://www.linkedin.com/in/sbahle-kumalo-b4b498267" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Linkedin /></a>
+              <a aria-label="Facebook" href="https://www.facebook.com/IssUrSlime" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Facebook /></a>
+              <a aria-label="Portfolio" href="https://sbahle-kumalo-emerging-technologies.base44.app/" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Globe /></a>
+              <a aria-label="WhatsApp" href="https://wa.me/27827744933" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><MessageCircle /></a>
+            </div>
+          </div>
+
+          <div>
+            <h5 className="text-2xl font-semibold text-violet-300 mb-3">Legal</h5>
+            <ul className="text-[#aab3c2] space-y-2 text-lg">
+              <li>Privacy</li>
+              <li>Terms</li>
+              <li>Security</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-10 pt-8 border-t border-white/10 text-center text-[#97a3b7] text-lg">
+          © 2026 AI Career System. All rights reserved.
+        </div>
+      </div>
+    </footer>
   )
 }
 
@@ -204,7 +260,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         >
           <motion.div className="mb-6 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
             <div className="w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon">
-              <BrainCircuit className="text-cyan-300" size={46} />
+              <Brain className="text-cyan-300" size={46} />
             </div>
           </motion.div>
 
@@ -225,7 +281,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-2xl"
           >
             Begin Your Journey
-            <motion.span animate={{ x: [0, 3, 0], y: [0, -2, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+            <motion.span animate={{ x: [0, 6, 0], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
               <Rocket size={24} />
             </motion.span>
           </motion.button>
@@ -355,9 +411,11 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
         </div>
       </section>
 
-      <section className="relative px-8 lg:px-12 pb-24 pt-6 max-w-[980px] mx-auto">
+      <section className="relative px-8 lg:px-12 pb-20 pt-12 max-w-[980px] mx-auto">
         <FinalLaunchCard onEnter={onEnter} />
       </section>
+
+      <LandingFooter />
     </div>
   )
 }
