@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, CircleDot, BookOpen, Target } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
 import api from '../services/api'
 
@@ -49,14 +49,7 @@ function MatchCard({ name, score, reason, delay }: { name: string; score: number
   }, [score, delay])
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.2 }}
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.35, delay: delay * 0.07 }}
-      className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl"
-    >
+    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.35, delay: delay * 0.07 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h3 className="text-3xl font-semibold">{name}</h3>
         <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-xl">{score}%</span>
@@ -82,12 +75,16 @@ function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: R
   )
 }
 
-export default function AnalysisPage({ documentId }: { documentId: number }) {
+export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
+  const params = useParams<{ documentId: string }>()
+  const documentId = Number(params.documentId)
 
   useEffect(() => {
+    if (!Number.isFinite(documentId) || documentId <= 0) return
+
     const run = async () => {
       setIsLoading(true)
       try {
@@ -99,6 +96,8 @@ export default function AnalysisPage({ documentId }: { documentId: number }) {
     }
     run()
   }, [documentId])
+
+  if (!Number.isFinite(documentId) || documentId <= 0) return <Navigate to="/dashboard" />
 
   const professions = useMemo(() => {
     const scored = analysis?.insights?.profession_scores ?? []

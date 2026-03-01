@@ -58,7 +58,6 @@ export default function App() {
   const { isAuthenticated, saveToken, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   const authRefresh = () => {
@@ -76,7 +75,6 @@ export default function App() {
   const signOut = () => {
     logout()
     localStorage.removeItem('profile_email')
-    setSelectedId(null)
     setShowAuthModal(false)
     navigate('/')
   }
@@ -95,8 +93,9 @@ export default function App() {
               element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} />}
             />
             <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" /> : <div className="min-h-screen flex items-center justify-center p-6"><AuthCard onAuthenticated={authRefresh} /></div>} />
-            <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => { setSelectedId(id); navigate('/analysis') }} /> : <Navigate to="/auth" />} />
-            <Route path="/analysis" element={isAuthenticated && selectedId ? <AnalysisPage documentId={selectedId} /> : <Navigate to="/dashboard" />} />
+            <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />
+            <Route path="/analysis/:documentId" element={isAuthenticated ? <AnalysisPage /> : <Navigate to="/auth" />} />
+            <Route path="/analysis" element={<Navigate to="/dashboard" />} />
           </Routes>
         </main>
       </div>
