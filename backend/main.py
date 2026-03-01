@@ -1,5 +1,10 @@
+from pathlib import Path
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.database.session import Base, engine
 from backend.models import analysis, document, user  # noqa: F401
@@ -23,7 +28,40 @@ app.include_router(auth_router)
 app.include_router(documents_router)
 app.include_router(analysis_router)
 
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="frontend-assets")
+
 
 @app.get("/")
 def healthcheck():
+    index_file = frontend_dist / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
     return {"status": "ok", "service": "NebulaGlass AI"}
+
+
+@app.get("/env-check")
+def env_check():
+    required_vars = ["SECRET_KEY", "DATABASE_URL", "OPENAI_API_KEY"]
+    optional_vars = ["OPENAI_MODEL"]
+
+    required = {name: bool(os.getenv(name, "").strip()) for name in required_vars}
+    optional = {name: bool(os.getenv(name, "").strip()) for name in optional_vars}
+
+    return {
+        "ready": all(required.values()),
+        "required": required,
+        "optional": optional,
+    }
+
+
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str):
+    if full_path.startswith(("auth", "upload", "documents", "analyze", "analysis", "ask-question")):
+        return {"detail": "Not Found"}
+
+    index_file = frontend_dist / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"detail": "Not Found"}
