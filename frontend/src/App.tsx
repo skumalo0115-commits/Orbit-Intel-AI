@@ -7,7 +7,7 @@ import AnalysisPage from './pages/AnalysisPage'
 import DashboardPage from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
 import api from './services/api'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 
 function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
@@ -59,6 +59,10 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
 
   const authRefresh = () => {
     const token = localStorage.getItem('token')

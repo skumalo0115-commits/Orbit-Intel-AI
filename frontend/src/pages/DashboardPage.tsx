@@ -34,7 +34,6 @@ function useTypingText(text: string, speed = 45) {
 export default function DashboardPage({ onSelect }: { onSelect: (id: number) => void }) {
   const [docs, setDocs] = useState<DocumentItem[]>([])
   const [skills, setSkills] = useState('')
-  const [profession, setProfession] = useState('')
   const [targetJobTitle, setTargetJobTitle] = useState('')
   const [targetJobDescription, setTargetJobDescription] = useState('')
   const [cvFile, setCvFile] = useState<File | null>(null)
@@ -113,7 +112,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
           setDocs(latestDocs)
           sessionStorage.setItem(docsCacheKey, JSON.stringify(latestDocs))
           setCvFile(null)
-          sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, interests: profession, profession, target_job_title: targetJobTitle, target_job_description: targetJobDescription }))
+          sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, target_job_title: targetJobTitle, target_job_description: targetJobDescription }))
           onSelect(recovered.id)
           return true
         }
@@ -151,7 +150,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       const uploadedDocument = response.data
 
       setStatusMessage('Uploading complete. Starting analysis...')
-      sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, interests: profession, profession, target_job_title: targetJobTitle, target_job_description: targetJobDescription }))
+      sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, target_job_title: targetJobTitle, target_job_description: targetJobDescription }))
       setCvFile(null)
       setDocs((prev) => {
         const next = [uploadedDocument, ...prev.filter((item) => item.id !== uploadedDocument.id)]
@@ -227,9 +226,6 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
 
             <label className="block text-lg mb-2 text-white/90">Skills & Expertise</label>
             <input value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Python, JavaScript, React, Machine Learning..." />
-
-            <label className="block text-lg mb-2 text-white/90">Profession</label>
-            <input value={profession} onChange={(e) => setProfession(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Data Scientist, Software Engineer, Product Manager..." />
 
             <label className="block text-lg mb-2 text-white/90">Target Job Title</label>
             <input value={targetJobTitle} onChange={(e) => setTargetJobTitle(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Senior Data Analyst" />

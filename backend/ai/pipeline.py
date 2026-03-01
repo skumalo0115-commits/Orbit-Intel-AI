@@ -1,14 +1,9 @@
-from functools import cached_property
 from typing import Any
 import json
 import os
 import re
 from urllib.parse import quote
 from urllib.request import urlopen
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from transformers import pipeline
 
 
 class AIPipeline:
@@ -49,22 +44,6 @@ class AIPipeline:
             "Research Analyst": ["research", "methodology", "literature", "analysis", "report writing", "survey"],
         }
 
-    @cached_property
-    def classifier(self):
-        return pipeline("zero-shot-classification", model="distilbert-base-uncased")
-
-    @cached_property
-    def summarizer(self):
-        return pipeline("summarization", model="facebook/bart-large-cnn")
-
-    @cached_property
-    def ner(self):
-        return pipeline("ner", model="dslim/bert-base-NER", aggregation_strategy="simple")
-
-    @cached_property
-    def embedder(self):
-        return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
     def analyze(self, text: str, profile_context: dict[str, str] | None = None) -> dict[str, Any]:
         trimmed = (text or "")[:4500]
         if not trimmed.strip():
@@ -88,7 +67,6 @@ class AIPipeline:
         research = self._research_target_role(context)
         career = self._career_insights(trimmed, context, research)
         summary = self._compose_career_summary(career, context, research)
-        embedding = self._embedding(summary)
 
         insights = {
             "word_count": len(trimmed.split()),
@@ -101,105 +79,118 @@ class AIPipeline:
             "summary": summary,
             "classification": classification,
             "entities": entities,
-            "embeddings": embedding,
+            "embeddings": [],
             "insights": insights,
         }
 
     def _classify(self, text: str) -> str:
         content = text.lower()
-
-        if self.fast_mode:
-            role_hits = sum(1 for keywords in self.profile_map.values() for kw in keywords if kw in content)
-            if role_hits >= 3 or "curriculum vitae" in content or "resume" in content:
-                return "CV"
-            if "invoice" in content:
-                return "Invoice"
-            if "agreement" in content or "contract" in content:
-                return "Contract"
-            if "financial" in content or "balance" in content:
-                return "Financial document"
-            return "Unknown"
-
-        try:
-            out = self.classifier(text, self.labels)
-            return out["labels"][0]
-        except Exception:
-            return "CV" if "experience" in content and "education" in content else "Unknown"
+        role_hits = sum(1 for keywords in self.profile_map.values() for kw in keywords if kw in content)
+        if role_hits >= 3 or "curriculum vitae" in content or "resume" in content:
+            return "CV"
+        if "invoice" in content:
+            return "Invoice"
+        if "agreement" in content or "contract" in content:
+            return "Contract"
+        if "financial" in content or "balance" in content:
+            return "Financial document"
+        return "Unknown"
 
     def _entities(self, text: str) -> list[dict[str, Any]]:
-        if self.fast_mode:
-            entities: list[dict[str, Any]] = []
-            email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
-            phone_match = re.search(r"\+?\d[\d\s\-()]{7,}\d", text)
-            linkedin_match = re.search(r"linkedin\.com/[^\s]+", text, re.IGNORECASE)
-            for matched, entity_type in (
-                (email_match.group(0) if email_match else None, "EMAIL"),
-                (phone_match.group(0) if phone_match else None, "PHONE"),
-                (linkedin_match.group(0) if linkedin_match else None, "LINK"),
-            ):
-                if matched:
-                    entities.append({"text": matched, "type": entity_type, "score": 0.95})
-            return entities
-
-        try:
-            return [{"text": e["word"], "type": e["entity_group"], "score": float(e["score"])} for e in self.ner(text)]
-        except Exception:
-            return []
-
-    def _embedding(self, text: str) -> list[float]:
-        if self.fast_mode:
-            return []
-        try:
-            vector = self.embedder.encode(text)
-            return np.asarray(vector).astype(float).tolist()
-        except Exception:
-            return []
+        entities: list[dict[str, Any]] = []
+        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+        phone_match = re.search(r"\+?\d[\d\s\-()]{7,}\d", text)
+        linkedin_match = re.search(r"linkedin\.com/[^\s]+", text, re.IGNORECASE)
+        for matched, entity_type in (
+            (email_match.group(0) if email_match else None, "EMAIL"),
+            (phone_match.group(0) if phone_match else None, "PHONE"),
+            (linkedin_match.group(0) if linkedin_match else None, "LINK"),
+        ):
+            if matched:
+                entities.append({"text": matched, "type": entity_type, "score": 0.95})
+        return entities
 
     def _research_target_role(self, profile_context: dict[str, str]) -> dict[str, Any]:
         job_title = (profile_context.get("target_job_title") or "").strip()
-        profession = (profile_context.get("profession") or profile_context.get("interests") or "").strip()
-        query = job_title or profession
+        target_job_description = (profile_context.get("target_job_description") or "").strip()
+
+        query = job_title or target_job_description[:80]
         if not query:
             return {"query": "", "summary": "", "source": "", "key_expectations": []}
 
-        candidates = [query]
-        if profession and profession.lower() != query.lower():
-            candidates.append(profession)
+        snippets: list[str] = []
+        sources: list[str] = []
+        expectations: list[str] = []
 
-        for term in candidates:
-            try:
-                url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(term)}"
-                with urlopen(url, timeout=5) as response:  # noqa: S310
-                    payload = json.loads(response.read().decode("utf-8"))
-                extract = (payload.get("extract") or "").strip()
-                if not extract:
-                    continue
-                cleaned = re.sub(r"\s+", " ", extract)
-                expectations = [
+        try:
+            wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(query)}"
+            with urlopen(wiki_url, timeout=5) as response:  # noqa: S310
+                payload = json.loads(response.read().decode("utf-8"))
+            extract = (payload.get("extract") or "").strip()
+            if extract:
+                clean_extract = re.sub(r"\s+", " ", extract)
+                snippets.append(clean_extract)
+                page_source = payload.get("content_urls", {}).get("desktop", {}).get("page")
+                if page_source:
+                    sources.append(page_source)
+                expectations.extend(
                     sentence.strip()
-                    for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
+                    for sentence in re.split(r"(?<=[.!?])\s+", clean_extract)
                     if sentence.strip()
-                ][:3]
-                return {
-                    "query": term,
-                    "summary": cleaned[:650],
-                    "source": payload.get("content_urls", {}).get("desktop", {}).get("page", "https://www.wikipedia.org/"),
-                    "key_expectations": expectations,
-                }
-            except Exception:
-                continue
+                )
+        except Exception:
+            pass
+
+        try:
+            ddg_url = f"https://api.duckduckgo.com/?q={quote(query + ' job requirements skills')}&format=json&no_html=1&skip_disambig=1"
+            with urlopen(ddg_url, timeout=5) as response:  # noqa: S310
+                ddg_payload = json.loads(response.read().decode("utf-8"))
+            abstract = (ddg_payload.get("AbstractText") or "").strip()
+            if abstract:
+                snippets.append(re.sub(r"\s+", " ", abstract))
+            abstract_url = (ddg_payload.get("AbstractURL") or "").strip()
+            if abstract_url:
+                sources.append(abstract_url)
+
+            related_topics = ddg_payload.get("RelatedTopics") or []
+            for topic in related_topics[:4]:
+                text = (topic.get("Text") if isinstance(topic, dict) else "") or ""
+                text = text.strip()
+                if text:
+                    expectations.append(text)
+        except Exception:
+            pass
+
+        if target_job_description:
+            expectations.extend(
+                chunk.strip()
+                for chunk in re.split(r"[.;\n]", target_job_description)
+                if chunk.strip()
+            )
+
+        deduped_expectations: list[str] = []
+        seen = set()
+        for item in expectations:
+            cleaned = re.sub(r"\s+", " ", item).strip()
+            key = cleaned.lower()
+            if cleaned and key not in seen:
+                deduped_expectations.append(cleaned)
+                seen.add(key)
+            if len(deduped_expectations) >= 5:
+                break
+
+        summary = " ".join(snippets).strip() or "External research could not be fetched right now; using CV + provided role details only."
+        source = " | ".join(dict.fromkeys([src for src in sources if src]))
 
         return {
             "query": query,
-            "summary": "External research could not be fetched right now; using CV + provided role details only.",
-            "source": "",
-            "key_expectations": [],
+            "summary": summary[:900],
+            "source": source,
+            "key_expectations": deduped_expectations,
         }
 
     def _career_insights(self, text: str, profile_context: dict[str, str], research: dict[str, Any] | None = None) -> dict[str, Any]:
         content = text.lower()
-        interests = (profile_context.get("interests") or "").lower()
-        profession = (profile_context.get("profession") or profile_context.get("interests") or "").lower()
         skills = (profile_context.get("skills") or "").lower()
         target_job_title = (profile_context.get("target_job_title") or "").lower()
         target_job_description = (profile_context.get("target_job_description") or "").lower()
@@ -207,7 +198,7 @@ class AIPipeline:
         research_summary = ((research or {}).get("summary") or "").lower()
         target_blob = " ".join(
             part
-            for part in [interests, profession, target_job_title, target_job_description, skills, research_summary]
+            for part in [target_job_title, target_job_description, skills, research_summary]
             if part.strip()
         )
 
@@ -242,13 +233,15 @@ class AIPipeline:
                 "target_alignment": "No strong alignment could be measured against a specific target role.",
                 "cv_strengths_for_target": ["General communication potential"],
                 "cv_gaps_for_target": ["Target role keywords", "job-specific tools", "quantified impact"],
+                "research_query": (research or {}).get("query", ""),
+                "research_source": (research or {}).get("source", ""),
             }
 
         top = scored_profiles[:3]
         max_score = max(score for _, score, _, _, _, _ in top)
 
         profession_scores: list[dict[str, Any]] = []
-        for name, score, reason_terms, _, matched_cv, matched_target in top:
+        for name, score, reason_terms, _, _, _ in top:
             pct = int(58 + ((score / max_score) * 39)) if max_score > 0 else 58
             pct = max(55, min(98, pct))
             signal = ", ".join(reason_terms[:5]) if reason_terms else "broad role alignment"
@@ -267,7 +260,7 @@ class AIPipeline:
         alignment_percent = int(alignment_ratio * 100)
         target_alignment = (
             f"Alignment with your target track ({top_profile}) is about {alignment_percent}%. "
-            "This is based on overlap between CV evidence and the target profession/job requirements you entered."
+            "This is based on overlap between CV evidence and the target role requirements you entered."
         )
 
         cv_gaps_for_target = top_missing[:5] if top_missing else ["quantified achievements", "role-specific portfolio"]
@@ -282,7 +275,6 @@ class AIPipeline:
             "cv_strengths_for_target": cv_strengths_for_target,
             "cv_gaps_for_target": cv_gaps_for_target,
             "target_job_title": profile_context.get("target_job_title") or "",
-            "profession_input": profile_context.get("profession") or profile_context.get("interests") or "",
             "research_query": (research or {}).get("query", ""),
             "research_source": (research or {}).get("source", ""),
         }
@@ -294,7 +286,6 @@ class AIPipeline:
         cv_strengths = career.get("cv_strengths_for_target", [])[:5]
         cv_gaps = career.get("cv_gaps_for_target", [])[:5]
 
-        profession = (profile_context.get("profession") or profile_context.get("interests") or "").strip()
         target_job_title = (profile_context.get("target_job_title") or "").strip()
         target_job_description = (profile_context.get("target_job_description") or "").strip()
         skills = (profile_context.get("skills") or "").strip()
@@ -303,14 +294,14 @@ class AIPipeline:
         readiness = "high" if top_score >= 85 else "moderate-to-strong" if top_score >= 70 else "early-stage"
 
         target_line = (
-            f"You are targeting the profession '{profession}' with a desired job title of '{target_job_title}'."
-            if profession or target_job_title
-            else "You did not provide a specific profession/job title, so analysis is based mostly on CV evidence."
+            f"You are targeting the job title '{target_job_title}'."
+            if target_job_title
+            else "You did not provide a specific target job title, so analysis is based mostly on CV evidence."
         )
 
         match_line = (
             f"Current suitability for interview shortlisting is {readiness} (match score: {top_score}%)."
-            " The AI compared your CV against your profession, skills, and target role requirements."
+            " The AI compared your CV against your skills and target role requirements."
         )
 
         top_fit_line = (
@@ -344,7 +335,7 @@ class AIPipeline:
         )
 
         actions_line = (
-            f"Practical action plan: (1) align your skills section to {profession or 'your target field'}, "
+            "Practical action plan: (1) align your skills section to the target role, "
             "(2) rewrite experience bullets with metrics and business impact, "
             "(3) add projects/certifications directly tied to the target role, "
             "(4) tailor your CV headline and summary to the job title, and "
@@ -353,10 +344,16 @@ class AIPipeline:
 
         research_summary = ((research or {}).get("summary") or "").strip()
         research_source = ((research or {}).get("source") or "").strip()
+        research_expectations = (research or {}).get("key_expectations") or []
         research_line = (
             f"Live web research for your target role indicates: {research_summary}" if research_summary else ""
         )
         research_source_line = f"Research source: {research_source}." if research_source else ""
+        expectation_line = (
+            f"Public web research highlights core role expectations such as: {'; '.join(research_expectations[:4])}."
+            if research_expectations
+            else ""
+        )
 
         skills_line = f"Skills context used in matching: {skills}." if skills else ""
         alignment_line = career.get("target_alignment", "")
@@ -374,6 +371,7 @@ class AIPipeline:
                 actions_line,
                 research_line,
                 research_source_line,
+                expectation_line,
                 skills_line,
                 alignment_line,
             ]

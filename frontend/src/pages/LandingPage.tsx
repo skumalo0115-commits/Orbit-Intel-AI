@@ -7,6 +7,7 @@ import {
   Github,
   Globe,
   Linkedin,
+  LogOut,
   Mail,
   MessageCircle,
   Rocket,
@@ -223,7 +224,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-left"
                 >
-                  Sign out
+                  <LogOut size={16} className="text-pink-300" /> Sign out
                 </button>
               </motion.div>
             )}
