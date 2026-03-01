@@ -93,14 +93,16 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
   }
 
-  const recoverUploadedDocument = async (filename: string) => {
+  const recoverUploadedDocument = async (filename: string, existingDocIds: Set<number>) => {
     setStatusMessage('Finalising upload...')
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
       try {
         const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 20000 })
         const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
-        const recovered = latestDocs.find((doc) => doc.filename === filename)
+        const recoveredByName = latestDocs.find((doc) => doc.filename === filename)
+        const recoveredByNewId = latestDocs.find((doc) => !existingDocIds.has(doc.id))
+        const recovered = recoveredByName ?? recoveredByNewId
 
         if (recovered) {
           setDocs(latestDocs)
@@ -125,6 +127,8 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       return
     }
 
+    const existingDocIds = new Set(docs.map((doc) => doc.id))
+
     setError(null)
     setStatusMessage('Uploading CV...')
     setIsUploading(true)
@@ -143,12 +147,21 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       })
       onSelect(uploadedDocument.id)
     } catch (err) {
-      const recovered = await recoverUploadedDocument(cvFile.name)
+      const recovered = await recoverUploadedDocument(cvFile.name, existingDocIds)
       if (recovered) return
 
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail
-        setError(typeof detail === 'string' ? detail : 'We could not complete your upload right now. Please try again.')
+        const status = err.response?.status
+        if (typeof detail === 'string' && detail.trim()) {
+          setError(detail)
+        } else if (status === 401) {
+          setError('Your session expired. Please sign in again, then upload your document.')
+        } else if (status === 413) {
+          setError('This file is too large for upload. Please try a smaller PDF or DOCX file.')
+        } else {
+          setError('Upload request failed, but we could not find the saved document yet. Please try again.')
+        }
       } else {
         setError('Unexpected upload issue. Please try again.')
       }
