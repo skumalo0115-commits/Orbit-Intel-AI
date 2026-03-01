@@ -1,6 +1,7 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, Sparkles, Upload } from 'lucide-react'
+import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
 import AppFooter from '../components/AppFooter'
 import api from '../services/api'
@@ -93,6 +94,13 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         return next
       })
       onSelect(response.data.id)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const message = typeof err.response?.data?.detail === 'string' ? err.response.data.detail : null
+        setError(message ?? 'Upload failed. Please try again with a supported CV file (PDF, DOCX, TXT, CSV, PNG, JPG).')
+      } else {
+        setError('Upload failed unexpectedly. Please try again.')
+      }
     } finally {
       setIsUploading(false)
     }
@@ -159,7 +167,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
               whileTap={{ scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 280, damping: 20 }}
               className="w-full py-3 rounded-2xl text-lg font-semibold bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-neon disabled:opacity-65 disabled:cursor-not-allowed"
-              disabled={isUploading}
+              disabled={isUploading || !cvFile}
             >
               {isUploading ? 'Uploading CV...' : 'Analyse Career Path'}
             </motion.button>
