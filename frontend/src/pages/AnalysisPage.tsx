@@ -26,6 +26,9 @@ interface Analysis {
 type ProfileContext = {
   interests?: string
   skills?: string
+  profession?: string
+  target_job_title?: string
+  target_job_description?: string
 }
 
 function useTypingText(text: string, speed = 24) {
