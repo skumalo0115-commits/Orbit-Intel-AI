@@ -1,7 +1,10 @@
 from functools import cached_property
 from typing import Any
+import json
 import os
 import re
+from urllib.parse import quote
+from urllib.request import urlopen
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -81,16 +84,18 @@ class AIPipeline:
 
         classification = self._classify(trimmed)
         entities = self._entities(trimmed)
-        career = self._career_insights(trimmed, profile_context or {})
-        summary = self._compose_career_summary(career, profile_context or {})
+        context = profile_context or {}
+        research = self._research_target_role(context)
+        career = self._career_insights(trimmed, context, research)
+        summary = self._compose_career_summary(career, context, research)
         embedding = self._embedding(summary)
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
-            "recommended_professions": career["recommended_professions"],
-            "profession_scores": career["profession_scores"],
+            "web_research": research,
+            **career,
         }
         return {
             "summary": summary,
@@ -150,7 +155,48 @@ class AIPipeline:
         except Exception:
             return []
 
-    def _career_insights(self, text: str, profile_context: dict[str, str]) -> dict[str, Any]:
+    def _research_target_role(self, profile_context: dict[str, str]) -> dict[str, Any]:
+        job_title = (profile_context.get("target_job_title") or "").strip()
+        profession = (profile_context.get("profession") or profile_context.get("interests") or "").strip()
+        query = job_title or profession
+        if not query:
+            return {"query": "", "summary": "", "source": "", "key_expectations": []}
+
+        candidates = [query]
+        if profession and profession.lower() != query.lower():
+            candidates.append(profession)
+
+        for term in candidates:
+            try:
+                url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(term)}"
+                with urlopen(url, timeout=5) as response:  # noqa: S310
+                    payload = json.loads(response.read().decode("utf-8"))
+                extract = (payload.get("extract") or "").strip()
+                if not extract:
+                    continue
+                cleaned = re.sub(r"\s+", " ", extract)
+                expectations = [
+                    sentence.strip()
+                    for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
+                    if sentence.strip()
+                ][:3]
+                return {
+                    "query": term,
+                    "summary": cleaned[:650],
+                    "source": payload.get("content_urls", {}).get("desktop", {}).get("page", "https://www.wikipedia.org/"),
+                    "key_expectations": expectations,
+                }
+            except Exception:
+                continue
+
+        return {
+            "query": query,
+            "summary": "External research could not be fetched right now; using CV + provided role details only.",
+            "source": "",
+            "key_expectations": [],
+        }
+
+    def _career_insights(self, text: str, profile_context: dict[str, str], research: dict[str, Any] | None = None) -> dict[str, Any]:
         content = text.lower()
         interests = (profile_context.get("interests") or "").lower()
         profession = (profile_context.get("profession") or profile_context.get("interests") or "").lower()
@@ -158,9 +204,10 @@ class AIPipeline:
         target_job_title = (profile_context.get("target_job_title") or "").lower()
         target_job_description = (profile_context.get("target_job_description") or "").lower()
 
+        research_summary = ((research or {}).get("summary") or "").lower()
         target_blob = " ".join(
             part
-            for part in [interests, profession, target_job_title, target_job_description, skills]
+            for part in [interests, profession, target_job_title, target_job_description, skills, research_summary]
             if part.strip()
         )
 
@@ -236,9 +283,11 @@ class AIPipeline:
             "cv_gaps_for_target": cv_gaps_for_target,
             "target_job_title": profile_context.get("target_job_title") or "",
             "profession_input": profile_context.get("profession") or profile_context.get("interests") or "",
+            "research_query": (research or {}).get("query", ""),
+            "research_source": (research or {}).get("source", ""),
         }
 
-    def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str]) -> str:
+    def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str], research: dict[str, Any] | None = None) -> str:
         top_roles = career.get("recommended_professions", [])[:2]
         top_scores = career.get("profession_scores", [])
         strengths = career.get("transferable_strengths", [])
@@ -302,6 +351,13 @@ class AIPipeline:
             "(5) practice interview stories that prove each listed requirement."
         )
 
+        research_summary = ((research or {}).get("summary") or "").strip()
+        research_source = ((research or {}).get("source") or "").strip()
+        research_line = (
+            f"Live web research for your target role indicates: {research_summary}" if research_summary else ""
+        )
+        research_source_line = f"Research source: {research_source}." if research_source else ""
+
         skills_line = f"Skills context used in matching: {skills}." if skills else ""
         alignment_line = career.get("target_alignment", "")
 
@@ -316,6 +372,8 @@ class AIPipeline:
                 improvement_line,
                 requirements_line,
                 actions_line,
+                research_line,
+                research_source_line,
                 skills_line,
                 alignment_line,
             ]
