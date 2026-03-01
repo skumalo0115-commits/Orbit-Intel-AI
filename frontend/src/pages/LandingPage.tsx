@@ -15,12 +15,13 @@ import {
   WandSparkles,
   Zap,
 } from 'lucide-react'
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 type LandingProps = {
   onEnter: () => void
   isAuthenticated: boolean
   profileInitial: string
+  onSignOut: () => void
 }
 
 type MiniCardProps = { icon: 'analysis' | 'precision' | 'growth'; title: string; description: string; delay: number }
@@ -164,14 +165,27 @@ function LandingFooter() {
   )
 }
 
-export default function LandingPage({ onEnter, isAuthenticated, profileInitial }: LandingProps) {
+export default function LandingPage({ onEnter, isAuthenticated, profileInitial, onSignOut }: LandingProps) {
   const { scrollY } = useScroll()
   const scrollOpacity = useTransform(scrollY, [0, 90], [1, 0])
   const scrollYPos = useTransform(scrollY, [0, 90], [0, 20])
   const rawFade = useTransform(scrollY, [0, 500], [0.35, 0.95])
   const heroFadeToBlack = useSpring(rawFade, { stiffness: 85, damping: 24, mass: 0.8 })
-  const headingLine1 = useTypingText('Your Future', 55)
-  const headingLine2 = useTypingText('Starts Here', 55)
+  const headingLine = useTypingText('Your Future Starts Here', 60)
+  const [openProfileMenu, setOpenProfileMenu] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+
+
+  useEffect(() => {
+    const closeOnOutside = (event: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setOpenProfileMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutside)
+    return () => document.removeEventListener('mousedown', closeOnOutside)
+  }, [])
 
   const bgStyle = useMemo(
     () => ({
@@ -190,8 +204,29 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,217,255,0.14),transparent_45%)]" />
 
         {isAuthenticated && (
-          <div className="absolute top-6 right-6 z-20 w-12 h-12 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center text-xl font-semibold text-white shadow-neon">
-            {profileInitial}
+          <div className="absolute top-6 right-6 z-20" ref={profileMenuRef}>
+            <motion.button
+              whileHover={{ scale: 1.14, boxShadow: '0 0 24px rgba(34,211,238,0.55)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setOpenProfileMenu((prev) => !prev)}
+              className="w-12 h-12 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center text-xl font-semibold text-white shadow-neon"
+            >
+              {profileInitial}
+            </motion.button>
+
+            {openProfileMenu && (
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-2 glass-card border border-violet-300/30 rounded-xl p-2 min-w-[150px]">
+                <button
+                  onClick={() => {
+                    setOpenProfileMenu(false)
+                    onSignOut()
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-left"
+                >
+                  Sign out
+                </button>
+              </motion.div>
+            )}
           </div>
         )}
 
@@ -199,7 +234,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
           <motion.div className="mb-6 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
             <div className="w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon"><Brain className="text-cyan-300" size={46} /></div>
           </motion.div>
-          <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.03] min-h-[170px] md:min-h-[220px]"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine1}</span><br /><span className="text-white">{headingLine2}</span></h1>
+          <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.03] min-h-[110px] md:min-h-[140px] whitespace-nowrap"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine}</span></h1>
           <p className="text-[#c5d0df] text-2xl max-w-4xl mx-auto mt-7 leading-relaxed">Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.</p>
           <motion.button onClick={onEnter} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-2xl">
             Begin Your Journey

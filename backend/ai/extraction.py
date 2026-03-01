@@ -14,8 +14,11 @@ class TextExtractor:
             return TextExtractor._extract_pdf(path)
         if suffix == ".docx":
             return TextExtractor._extract_docx(path)
-        if suffix in {".txt", ".csv"}:
+        if suffix in {".txt", ".csv", ".rtf"}:
             return path.read_text(encoding="utf-8", errors="ignore")
+        if suffix == ".doc":
+            # Legacy .doc support: fallback to permissive text decode when dedicated parsers are unavailable.
+            return path.read_bytes().decode("latin-1", errors="ignore")
         if suffix in {".png", ".jpg", ".jpeg"}:
             return TextExtractor._extract_image(path)
         raise ValueError("Unsupported file type")

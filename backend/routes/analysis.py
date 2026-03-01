@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from backend.ai.extraction import TextExtractor
 from backend.ai.pipeline import ai_pipeline
 from backend.database.session import get_db
 from backend.models.analysis import Analysis
@@ -17,13 +18,38 @@ class QuestionRequest(BaseModel):
     question: str
 
 
+class AnalyzeRequest(BaseModel):
+    skills: str | None = None
+    interests: str | None = None
+
+
 @router.post("/analyze/{document_id}", response_model=AnalysisResponse)
-def analyze_document(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def analyze_document(
+    document_id: int,
+    payload: AnalyzeRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     doc = db.query(Document).filter(Document.id == document_id, Document.user_id == current_user.id).first()
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    result = ai_pipeline.analyze(doc.text or "")
+    text_content = (doc.text or "").strip()
+    if not text_content:
+        try:
+            text_content = TextExtractor.extract(doc.file_path)
+            doc.text = text_content
+            db.add(doc)
+            db.commit()
+            db.refresh(doc)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"We could not read this file for analysis. Please upload PDF, DOCX, DOC, TXT, CSV, RTF, PNG, or JPG/JPEG. ({exc})",
+            ) from exc
+
+    profile_context = {"skills": payload.skills or "", "interests": payload.interests or ""} if payload else {}
+    result = ai_pipeline.analyze(text_content, profile_context=profile_context)
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
         record = Analysis(document_id=doc.id)
