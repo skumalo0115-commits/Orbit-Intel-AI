@@ -96,8 +96,23 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       onSelect(response.data.id)
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        const message = typeof err.response?.data?.detail === 'string' ? err.response.data.detail : null
-        setError(message ?? 'Upload failed. Please try again with a supported CV file (PDF, DOCX, TXT, CSV, PNG, JPG).')
+        const status = err.response?.status
+        const detail = err.response?.data && typeof err.response.data === 'object' && 'detail' in err.response.data
+          ? (err.response.data as { detail?: unknown }).detail
+          : null
+        const detailMessage = typeof detail === 'string' ? detail : null
+
+        if (status === 401) {
+          setError('Your session has expired. Please sign out and sign in again, then retry the upload.')
+        } else if (status === 413) {
+          setError('This CV file is too large. Please upload a smaller PDF or DOCX file.')
+        } else if (detailMessage) {
+          setError(detailMessage)
+        } else if (!err.response) {
+          setError('Cannot reach the API server. Please check backend status / API URL and try again.')
+        } else {
+          setError(`Upload failed (HTTP ${status ?? 'unknown'}). Please try again.`)
+        }
       } else {
         setError('Upload failed unexpectedly. Please try again.')
       }
