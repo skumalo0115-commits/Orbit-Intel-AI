@@ -21,6 +21,9 @@ class QuestionRequest(BaseModel):
 class AnalyzeRequest(BaseModel):
     skills: str | None = None
     interests: str | None = None
+    profession: str | None = None
+    target_job_title: str | None = None
+    target_job_description: str | None = None
 
 
 @router.post("/analyze/{document_id}", response_model=AnalysisResponse)
@@ -48,7 +51,13 @@ def analyze_document(
                 detail=f"We could not read this file for analysis. Please upload PDF, DOCX, DOC, TXT, CSV, RTF, PNG, or JPG/JPEG. ({exc})",
             ) from exc
 
-    profile_context = {"skills": payload.skills or "", "interests": payload.interests or ""} if payload else {}
+    profile_context = {
+        "skills": payload.skills or "",
+        "interests": payload.interests or "",
+        "profession": payload.profession or payload.interests or "",
+        "target_job_title": payload.target_job_title or "",
+        "target_job_description": payload.target_job_description or "",
+    } if payload else {}
     result = ai_pipeline.analyze(text_content, profile_context=profile_context)
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
