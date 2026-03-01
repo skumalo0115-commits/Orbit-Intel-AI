@@ -37,12 +37,21 @@ def upload_document(
     db.add(document)
     db.commit()
     db.refresh(document)
-    return document
+    return {"id": document.id, "filename": document.filename, "upload_date": document.upload_date, "is_analyzed": False}
 
 
 @router.get("/documents", response_model=list[DocumentResponse])
 def list_documents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(Document).filter(Document.user_id == current_user.id).order_by(Document.upload_date.desc()).all()
+    docs = db.query(Document).filter(Document.user_id == current_user.id).order_by(Document.upload_date.desc()).all()
+    return [
+        {
+            "id": doc.id,
+            "filename": doc.filename,
+            "upload_date": doc.upload_date,
+            "is_analyzed": bool(doc.analysis),
+        }
+        for doc in docs
+    ]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDetailResponse)
@@ -50,7 +59,7 @@ def get_document(document_id: int, db: Session = Depends(get_db), current_user: 
     doc = db.query(Document).filter(Document.id == document_id, Document.user_id == current_user.id).first()
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    return doc
+    return {"id": doc.id, "filename": doc.filename, "upload_date": doc.upload_date, "text": doc.text, "is_analyzed": bool(doc.analysis)}
 
 
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

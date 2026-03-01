@@ -49,20 +49,18 @@ class AIPipeline:
                 },
             }
 
-        summary = self._summarize(trimmed)
+        summary_seed = self._summarize(trimmed)
         classification = self._classify(trimmed)
         entities = self._entities(trimmed)
-        embedding = self._embedding(summary or trimmed)
         career = self._career_insights(trimmed, entities)
+        summary = self._compose_career_summary(summary_seed, career)
+        embedding = self._embedding(summary or trimmed)
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
-            "detected_skills": career["detected_skills"],
             "recommended_professions": career["recommended_professions"],
-            "improvement_areas": career["improvement_areas"],
-            "strengths": career["strengths"],
             "profession_scores": career["profession_scores"],
         }
         return {
@@ -203,25 +201,31 @@ class AIPipeline:
         required_for_top = profile_map.get(top_profile, [])
         missing_for_top = [skill for skill in required_for_top if skill not in detected_skills][:4]
 
-        strengths = detected_skills[:6]
-        if not strengths:
-            strengths = [entity.get("text", "") for entity in entities[:4] if entity.get("text")]
-
-        improvement_areas = [f"Build evidence of {skill.title()}" for skill in missing_for_top]
-        if not improvement_areas:
-            improvement_areas = [
-                "Add measurable project outcomes to the CV",
-                "Include certifications or proof of practical experience",
-                "Highlight role-specific tools and responsibilities",
-            ]
-
         return {
-            "detected_skills": detected_skills,
             "recommended_professions": recommended_professions,
-            "improvement_areas": improvement_areas,
-            "strengths": strengths,
             "profession_scores": profession_scores,
+            "missing_for_top": missing_for_top,
+            "detected_skills": detected_skills[:6],
         }
+
+    def _compose_career_summary(self, base_summary: str, career: dict[str, Any]) -> str:
+        top_roles = career.get("recommended_professions", [])[:2]
+        missing = career.get("missing_for_top", [])[:3]
+        detected = career.get("detected_skills", [])[:4]
+
+        role_sentence = f"Top-fit career direction: {', '.join(top_roles)}." if top_roles else "Top-fit career direction: General Professional Role."
+        strengths_sentence = (
+            f"Strong signals from your CV include: {', '.join(detected)}."
+            if detected
+            else "Your CV shows foundational potential that can be strengthened with clearer technical outcomes."
+        )
+        improve_sentence = (
+            f"To improve your match quality, focus next on: {', '.join(missing)}."
+            if missing
+            else "To improve your profile, add measurable project outcomes, practical certifications, and role-specific tools."
+        )
+
+        return f"{base_summary} {role_sentence} {strengths_sentence} {improve_sentence}".strip()
 
 
 ai_pipeline = AIPipeline()

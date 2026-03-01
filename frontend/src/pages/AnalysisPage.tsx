@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Brain, CircleDot, BookOpen, Target } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { motion, useMotionTemplate, useScroll, useSpring, useTransform } from 'framer-motion'
+import { Brain, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
 import axios from 'axios'
@@ -17,24 +17,39 @@ interface Analysis {
   classification: string
   entities: { text: string; type: string; score?: number }[]
   insights?: {
-    detected_skills?: string[]
     recommended_professions?: string[]
-    improvement_areas?: string[]
-    strengths?: string[]
     profession_scores?: ProfessionScore[]
     [key: string]: unknown
   }
+}
+
+function useTypingText(text: string, speed = 24) {
+  const [value, setValue] = useState('')
+
+  useEffect(() => {
+    let i = 0
+    setValue('')
+    const t = setInterval(() => {
+      i += 1
+      setValue(text.slice(0, i))
+      if (i >= text.length) clearInterval(t)
+    }, speed)
+
+    return () => clearInterval(t)
+  }, [text, speed])
+
+  return value
 }
 
 function AnalysisLoader() {
   return (
     <div className="min-h-[52vh] flex flex-col items-center justify-center text-center">
       <div className="relative w-32 h-32 mb-7">
-        <motion.div className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400" animate={{ rotate: 360 }} transition={{ duration: 0.82, repeat: Infinity, ease: 'linear' }} />
-        <motion.div className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300" animate={{ rotate: -360 }} transition={{ duration: 0.72, repeat: Infinity, ease: 'linear' }} />
-        <motion.div className="absolute inset-[24px] rounded-full border-2 border-cyan-300/60" animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }} transition={{ duration: 0.88, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400" animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }} />
+        <motion.div className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300" animate={{ rotate: -360 }} transition={{ duration: 0.82, repeat: Infinity, ease: 'linear' }} />
+        <motion.div className="absolute inset-[24px] rounded-full border-2 border-cyan-300/60" animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
-      <motion.p className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent" animate={{ opacity: [0.5, 1, 0.5], y: [0, -2, 0] }} transition={{ duration: 0.72, repeat: Infinity, ease: 'easeInOut' }}>
+      <motion.p className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent" animate={{ opacity: [0.55, 1, 0.55], y: [0, -2, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}>
         Analysing your career path...
       </motion.p>
     </div>
@@ -45,34 +60,21 @@ function MatchCard({ name, score, reason, delay }: { name: string; score: number
   const [value, setValue] = useState(0)
 
   useEffect(() => {
-    const t = setTimeout(() => setValue(score), 120 + delay * 100)
+    const t = setTimeout(() => setValue(score), 200 + delay * 140)
     return () => clearTimeout(t)
   }, [score, delay])
 
   return (
-    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -6, scale: 1.02, boxShadow: '0 18px 36px rgba(124,58,237,0.25)' }} transition={{ duration: 0.35, delay: delay * 0.07 }} className="rounded-2xl border border-white/20 p-3.5 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
+    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -6, scale: 1.02, boxShadow: '0 18px 36px rgba(124,58,237,0.25)' }} transition={{ duration: 0.4, delay: delay * 0.08 }} className="rounded-2xl border border-white/20 p-3.5 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h3 className="text-2xl font-semibold">{name}</h3>
         <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-lg">{score}%</span>
       </div>
       <div className="h-2.5 rounded-full bg-white/15 mb-3 overflow-hidden">
-        <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.9, ease: 'easeOut' }} />
+        <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1.6, ease: 'easeOut' }} />
       </div>
       <p className="text-[#d6ddef] text-base leading-relaxed">{reason}</p>
     </motion.article>
-  )
-}
-
-function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: ReactNode; items: string[]; dotColor: string }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-3.5 bg-white/10 backdrop-blur-xl">
-      <h3 className="text-2xl font-semibold mb-3 inline-flex items-center gap-2">{icon}{title}</h3>
-      <ul className="space-y-2 text-base text-[#d7deea]">
-        {items.map((item) => (
-          <li key={item} className="flex items-start gap-2"><span className={dotColor}>●</span><span>{item}</span></li>
-        ))}
-      </ul>
-    </motion.div>
   )
 }
 
@@ -83,6 +85,11 @@ export default function AnalysisPage() {
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
+  const { scrollY } = useScroll()
+  const rawOpacity = useTransform(scrollY, [80, 360], [1, 0.56])
+  const contentOpacity = useSpring(rawOpacity, { stiffness: 110, damping: 28 })
+  const rawBlur = useTransform(scrollY, [80, 360], [0, 5])
+  const blurFilter = useMotionTemplate`blur(${rawBlur}px)`
 
   useEffect(() => {
     if (!Number.isFinite(documentId) || documentId <= 0) return
@@ -106,9 +113,7 @@ export default function AnalysisPage() {
           }
         }
 
-        if (lastError) {
-          throw lastError
-        }
+        if (lastError) throw lastError
       } catch (err) {
         if (axios.isAxiosError(err)) {
           const detail = err.response?.data?.detail
@@ -120,7 +125,8 @@ export default function AnalysisPage() {
         setIsLoading(false)
       }
     }
-    run()
+
+    void run()
   }, [documentId])
 
   if (!Number.isFinite(documentId) || documentId <= 0) return <Navigate to="/dashboard" />
@@ -132,14 +138,33 @@ export default function AnalysisPage() {
     const fallback = (analysis?.insights?.recommended_professions ?? []).slice(0, 3).map((name, idx) => ({
       name,
       score: [92, 86, 80][idx] ?? 75,
-      reason: 'Profession match derived from your CV skills and experience.',
+      reason: 'Profession match derived from your CV signals and profile context.',
     }))
 
     return fallback.length ? fallback : [{ name: 'General Professional Role', score: 70, reason: 'Limited profile signals found in the CV text.' }]
   }, [analysis])
 
-  const skills = useMemo(() => analysis?.insights?.detected_skills ?? ['No explicit technical/domain skills found in CV.'], [analysis])
-  const improvements = useMemo(() => analysis?.insights?.improvement_areas ?? ['No major gaps detected from available CV text.'], [analysis])
+  const heading = useTypingText('AI Career Intelligence System', 60)
+
+  const profileContext = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem('dashboard_profile_context')
+      return raw ? (JSON.parse(raw) as { interests?: string; skills?: string }) : null
+    } catch {
+      return null
+    }
+  }, [])
+
+  const summaryText = useMemo(() => {
+    const base = analysis?.summary?.trim() || 'No summary was generated.'
+    const interests = profileContext?.interests?.trim()
+
+    if (!interests) return `${base} Focus on deepening your strongest matched skills and building portfolio-ready outcomes.`
+
+    return `${base} Based on your stated interests (${interests}), focus on projects and certifications that align directly with your top career matches.`
+  }, [analysis?.summary, profileContext])
+
+  const typedSummary = useTypingText(summaryText, 22)
 
   const bgStyle = useMemo(
     () => ({
@@ -157,7 +182,7 @@ export default function AnalysisPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(5,8,18,0.75),rgba(5,8,18,0.82))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.35),transparent_58%)]" />
 
-        <div className="relative z-10 max-w-[1180px] mx-auto">
+        <motion.div className="relative z-10 max-w-[1180px] mx-auto" style={{ opacity: contentOpacity, filter: blurFilter }}>
           {isLoading ? (
             <AnalysisLoader />
           ) : error ? (
@@ -173,7 +198,7 @@ export default function AnalysisPage() {
                 <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
                   <Brain className="text-cyan-300" size={44} />
                 </motion.div>
-                <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
+                <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent min-h-[62px]">{heading}</h1>
                 <p className="text-[#d2d9e7] text-lg mt-2">Next-generation career guidance powered by artificial intelligence</p>
               </motion.div>
 
@@ -188,14 +213,9 @@ export default function AnalysisPage() {
                 ))}
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-4 mb-4">
-                <InsightPanel title="Skills to Develop" icon={<CircleDot className="text-violet-300" size={24} />} items={skills} dotColor="text-violet-300 mt-1" />
-                <InsightPanel title="Learning Path" icon={<BookOpen className="text-pink-300" size={24} />} items={improvements} dotColor="text-pink-300 mt-1" />
-              </div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-3.5 bg-white/10 backdrop-blur-xl">
-                <h3 className="text-2xl font-semibold mb-2">Document Summary</h3>
-                <p className="text-base text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.16),rgba(15,23,42,0.7))] backdrop-blur-xl">
+                <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
+                <p className="text-base text-[#d7deea] leading-relaxed min-h-[120px]">{typedSummary}</p>
                 <p className="text-lg text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
               </motion.div>
 
@@ -206,7 +226,7 @@ export default function AnalysisPage() {
               </div>
             </>
           )}
-        </div>
+        </motion.div>
       </section>
 
       <AppFooter />

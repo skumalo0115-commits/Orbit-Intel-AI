@@ -39,20 +39,22 @@ export default function Navbar({ onHome, onResults, onSignOut, profileInitial }:
       </div>
 
       <div className="flex items-center gap-6 text-xl text-white/85">
-        <button onClick={onHome} className="flex items-center gap-2 hover:text-cyan-300 transition">
+        <motion.button whileHover={{ scale: 1.08, y: -1 }} whileTap={{ scale: 0.97 }} onClick={onHome} className="flex items-center gap-2 hover:text-cyan-300 transition">
           <Home size={20} /> Home
-        </button>
-        <button onClick={onResults} className="flex items-center gap-2 hover:text-cyan-300 transition">
+        </motion.button>
+        <motion.button whileHover={{ scale: 1.08, y: -1 }} whileTap={{ scale: 0.97 }} onClick={onResults} className="flex items-center gap-2 hover:text-cyan-300 transition">
           <BarChart3 size={20} /> Results
-        </button>
+        </motion.button>
 
         <div className="relative" ref={menuRef}>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.14, boxShadow: '0 0 24px rgba(34,211,238,0.55)' }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setOpen((prev) => !prev)}
             className="w-10 h-10 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center text-sm font-semibold text-white shadow-neon"
           >
             {profileInitial}
-          </button>
+          </motion.button>
 
           {open && (
             <motion.div
