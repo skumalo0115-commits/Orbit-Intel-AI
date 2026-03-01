@@ -83,7 +83,7 @@ export default function App() {
     <>
       {location.pathname !== '/' && <SpaceBackground />}
       {location.pathname !== '/' && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} onSignOut={signOut} profileInitial={profileInitial} />}
+      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onSignOut={signOut} profileInitial={profileInitial} />}
 
       <div className="min-h-screen">
         <main>

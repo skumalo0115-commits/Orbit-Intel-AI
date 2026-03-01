@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, Home, BarChart3, LogOut } from 'lucide-react'
+import { Brain, Home, LogOut } from 'lucide-react'
 
 interface NavbarProps {
   onHome: () => void
-  onResults: () => void
   onSignOut: () => void
   profileInitial: string
 }
 
-export default function Navbar({ onHome, onResults, onSignOut, profileInitial }: NavbarProps) {
+export default function Navbar({ onHome, onSignOut, profileInitial }: NavbarProps) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -41,9 +40,6 @@ export default function Navbar({ onHome, onResults, onSignOut, profileInitial }:
       <div className="flex items-center gap-6 text-xl text-white/85">
         <motion.button whileHover={{ scale: 1.08, y: -1 }} whileTap={{ scale: 0.97 }} onClick={onHome} className="flex items-center gap-2 hover:text-cyan-300 transition">
           <Home size={20} /> Home
-        </motion.button>
-        <motion.button whileHover={{ scale: 1.08, y: -1 }} whileTap={{ scale: 0.97 }} onClick={onResults} className="flex items-center gap-2 hover:text-cyan-300 transition">
-          <BarChart3 size={20} /> Results
         </motion.button>
 
         <div className="relative" ref={menuRef}>

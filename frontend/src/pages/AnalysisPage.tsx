@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion, useMotionTemplate, useScroll, useSpring, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Brain, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
