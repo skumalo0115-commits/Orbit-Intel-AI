@@ -90,6 +90,11 @@ export default function AnalysisPage() {
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
+  const { scrollY } = useScroll()
+  const rawOpacity = useTransform(scrollY, [80, 360], [1, 0.56])
+  const contentOpacity = useSpring(rawOpacity, { stiffness: 110, damping: 28 })
+  const rawBlur = useTransform(scrollY, [80, 360], [0, 5])
+  const blurFilter = useMotionTemplate`blur(${rawBlur}px)`
 
   useEffect(() => {
     if (!Number.isFinite(documentId) || documentId <= 0) return
@@ -172,7 +177,7 @@ export default function AnalysisPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(5,8,18,0.75),rgba(5,8,18,0.82))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.35),transparent_58%)]" />
 
-        <div className="relative z-10 max-w-[1180px] mx-auto">
+        <motion.div className="relative z-10 max-w-[1180px] mx-auto" style={{ opacity: contentOpacity, filter: blurFilter }}>
           {isLoading ? (
             <AnalysisLoader />
           ) : error ? (
@@ -223,7 +228,7 @@ export default function AnalysisPage() {
               </div>
             </>
           )}
-        </div>
+        </motion.div>
       </section>
 
       <AppFooter />
