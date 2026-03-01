@@ -103,7 +103,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     try {
       const formData = new FormData()
       formData.append('file', cvFile)
-      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 45000 })
+      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 180000 })
       const uploadedDocument = response.data
 
       setStatusMessage('Opening analysis...')
@@ -200,7 +200,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             >
               <Upload className="inline mr-2" />
               {cvFile ? cvFile.name : 'Drop your CV here or click to browse'}
-              <input type="file" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
+              <input type="file" accept=".pdf,.doc,.docx,.txt,.csv,.rtf,.png,.jpg,.jpeg" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
             </label>
 
             {error && <p className="text-pink-200 mb-3 text-base">{error}</p>}
