@@ -179,7 +179,7 @@ class AIPipeline:
             if len(deduped_expectations) >= 5:
                 break
 
-        summary = " ".join(snippets).strip() or "External research could not be fetched right now; using CV + provided role details only."
+        summary = " ".join(snippets).strip()
         source = " | ".join(dict.fromkeys([src for src in sources if src]))
 
         return {
@@ -291,92 +291,33 @@ class AIPipeline:
         skills = (profile_context.get("skills") or "").strip()
 
         top_score = top_scores[0]["score"] if top_scores else 58
-        readiness = "high" if top_score >= 85 else "moderate-to-strong" if top_score >= 70 else "early-stage"
-
-        target_line = (
-            f"You are targeting the job title '{target_job_title}'."
-            if target_job_title
-            else "You did not provide a specific target job title, so analysis is based mostly on CV evidence."
-        )
-
-        match_line = (
-            f"Current suitability for interview shortlisting is {readiness} (match score: {top_score}%)."
-            " The AI compared your CV against your skills and target role requirements."
-        )
-
-        top_fit_line = (
-            f"Best-fit roles right now: {', '.join(top_roles)}."
-            if top_roles
-            else "No clear top-fit role detected yet from current signals."
-        )
-
-        strengths_line = (
-            f"Where your CV is currently strong for the target role: {', '.join(cv_strengths)}."
-            if cv_strengths
-            else "Current CV strengths are generic; add stronger role-specific examples."
-        )
-
-        transferable_line = (
-            f"Transferable strengths detected: {', '.join(strengths)}."
-            if strengths
-            else "Increase evidence of communication, ownership, and delivery outcomes to improve interviewability."
-        )
-
-        improvement_line = (
-            f"Critical improvements to become more hireable faster: {', '.join(cv_gaps)}."
-            if cv_gaps
-            else "Critical improvements: measurable outcomes, domain tooling, and portfolio proof."
-        )
-
-        requirements_line = (
-            f"From your target job description, ensure your CV explicitly addresses: {target_job_description[:420]}."
-            if target_job_description
-            else "Add a target job description to get requirement-by-requirement matching advice."
-        )
-
-        actions_line = (
-            "Practical action plan: (1) align your skills section to the target role, "
-            "(2) rewrite experience bullets with metrics and business impact, "
-            "(3) add projects/certifications directly tied to the target role, "
-            "(4) tailor your CV headline and summary to the job title, and "
-            "(5) practice interview stories that prove each listed requirement."
-        )
+        readiness = "High" if top_score >= 85 else "Moderate" if top_score >= 70 else "Early-stage"
 
         research_summary = ((research or {}).get("summary") or "").strip()
         research_source = ((research or {}).get("source") or "").strip()
         research_expectations = (research or {}).get("key_expectations") or []
-        research_line = (
-            f"Live web research for your target role indicates: {research_summary}" if research_summary else ""
-        )
-        research_source_line = f"Research source: {research_source}." if research_source else ""
-        expectation_line = (
-            f"Public web research highlights core role expectations such as: {'; '.join(research_expectations[:4])}."
-            if research_expectations
-            else ""
-        )
 
-        skills_line = f"Skills context used in matching: {skills}." if skills else ""
-        alignment_line = career.get("target_alignment", "")
+        bullets = [
+            f"- Target Role: {target_job_title if target_job_title else 'Not provided explicitly; inferred from CV and job description context.'}",
+            f"- Interview Readiness: {readiness} ({top_score}% match based on CV evidence vs target requirements).",
+            f"- Best Role Matches: {', '.join(top_roles) if top_roles else 'No strong role detected yet.'}",
+            f"- CV Strengths for this target: {', '.join(cv_strengths) if cv_strengths else 'General transferable strengths only; add stronger role-specific proof.'}",
+            f"- Main Gaps to fix: {', '.join(cv_gaps) if cv_gaps else 'Quantified achievements, domain tools, and portfolio depth.'}",
+            f"- Transferable Signals Detected: {', '.join(strengths) if strengths else 'Communication/ownership evidence should be strengthened in CV bullets.'}",
+            f"- Job Description Coverage: {target_job_description[:320] if target_job_description else 'No job description provided; include one for precise requirement matching.'}",
+            "- Action Plan: (1) Rewrite bullets with measurable impact, (2) align skills section to job requirements, (3) add relevant projects/certifications, (4) tailor CV headline to target title, (5) prepare interview stories proving each requirement.",
+            f"- Skills Used in Analysis: {skills if skills else 'No explicit skills entered.'}",
+            f"- Alignment Verdict: {career.get('target_alignment', 'Alignment could not be measured reliably.')}",
+        ]
 
-        return " ".join(
-            line
-            for line in [
-                target_line,
-                match_line,
-                top_fit_line,
-                strengths_line,
-                transferable_line,
-                improvement_line,
-                requirements_line,
-                actions_line,
-                research_line,
-                research_source_line,
-                expectation_line,
-                skills_line,
-                alignment_line,
-            ]
-            if line
-        ).strip()
+        if research_summary:
+            bullets.append(f"- External Role Research: {research_summary}")
+        if research_expectations:
+            bullets.append(f"- Public Research Expectations: {'; '.join(research_expectations[:4])}.")
+        if research_source:
+            bullets.append(f"- Research Sources: {research_source}")
+
+        return "\n".join(bullets).strip()
 
 
 ai_pipeline = AIPipeline()
