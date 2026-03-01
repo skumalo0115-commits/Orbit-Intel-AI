@@ -1,4 +1,5 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import axios from 'axios'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 type RetryableConfig = InternalAxiosRequestConfig & {
   __baseUrlIndex?: number
@@ -21,9 +22,6 @@ const getBaseUrlCandidates = (): string[] => {
 
   return [...new Set(candidates.map(trimSlash))]
 }
-
-const envBaseUrl = import.meta.env.VITE_API_URL as string | undefined
-const defaultBaseUrl = window.location.hostname === 'localhost' ? 'http://localhost:8000' : window.location.origin
 
 const api = axios.create({
   baseURL: getBaseUrlCandidates()[0],
