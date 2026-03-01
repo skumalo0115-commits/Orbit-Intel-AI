@@ -29,7 +29,7 @@ A futuristic, full-stack AI career guidance platform that analyzes CVs and profi
 - 🐍 FastAPI
 - 🗄️ SQLAlchemy
 - 🔒 JWT Auth
-- 🤖 Heuristic + optional model-assisted AI pipeline
+- 🤖 ChatGPT-powered AI pipeline (OpenAI API)
 
 ### Database
 - 🧩 SQLite by default (`sqlite:///./nebulaglass.db`)
@@ -128,11 +128,43 @@ VITE_API_URL=http://localhost:8000
 
 ## ⚙️ Configuration Notes
 
-- `AI_FAST_MODE=1` (default): fast heuristic analysis mode.
-- `AI_FAST_MODE=0`: enables slower heavy model paths where available.
+- `OPENAI_API_KEY` (**required**): used for CV analysis on the Analysis page.
+- `OPENAI_MODEL` (optional, default `gpt-4o-mini`).
+- Use `GET /env-check` to verify required environment variables are set (returns booleans only, never secret values).
+
+### If `/analyze/{id}` returns 503
+
+1. Call `GET /env-check` and confirm `required.OPENAI_API_KEY` is `true`.
+2. Ensure your key starts with `sk-` and is active in OpenAI dashboard.
+3. Confirm billing/quota is enabled for your OpenAI project.
+4. If you set a custom model, verify `OPENAI_MODEL` is valid (default: `gpt-4o-mini`).
+5. Restart backend locally or redeploy on Railway after any env variable change.
 
 ---
 
 ## 📌 Product Goal
 
 Deliver fast, clear, and actionable AI career intelligence that helps users become more hireable for their target industry.
+
+
+## 🚂 Deploy to Railway (Step by Step)
+
+1. Push this repository to GitHub.
+2. In Railway, create a **New Project** → **Deploy from GitHub Repo**.
+3. Add environment variables in Railway service settings:
+   - `SECRET_KEY`
+   - `DATABASE_URL`
+   - `OPENAI_API_KEY`
+   - `OPENAI_MODEL` (optional, e.g. `gpt-4o-mini`)
+4. Deploy and open your service URL.
+5. Run a quick readiness check: `GET /env-check`
+   - `ready: true` means required variables are present.
+6. Upload a CV and open Analysis page to confirm live ChatGPT output.
+
+### 🔐 If your OpenAI key was exposed
+
+1. Revoke the exposed key in OpenAI dashboard immediately.
+2. Create a new API key.
+3. Update Railway `OPENAI_API_KEY` with the new value.
+4. Redeploy your Railway service.
+
