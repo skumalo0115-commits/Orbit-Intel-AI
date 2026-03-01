@@ -199,7 +199,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
 
   return (
     <div className="bg-black">
-      <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
+      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 overflow-hidden">
         <div className="absolute inset-0" style={bgStyle} />
         <motion.div style={{ opacity: heroFadeToBlack }} className="absolute inset-0 bg-black" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,217,255,0.14),transparent_45%)]" />
@@ -235,9 +235,9 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
           <motion.div className="mb-6 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
             <div className="w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon"><Brain className="text-cyan-300" size={46} /></div>
           </motion.div>
-          <h1 className="font-['Space_Grotesk'] text-6xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.03] min-h-[110px] md:min-h-[140px] whitespace-nowrap"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine}</span></h1>
-          <p className="text-[#c5d0df] text-2xl max-w-4xl mx-auto mt-7 leading-relaxed">Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.</p>
-          <motion.button onClick={onEnter} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="mt-12 inline-flex items-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-2xl">
+          <h1 className="font-['Space_Grotesk'] text-4xl sm:text-5xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.08] md:leading-[1.03] min-h-[88px] sm:min-h-[110px] md:min-h-[140px] break-words"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine}</span></h1>
+          <p className="text-[#c5d0df] text-lg sm:text-2xl max-w-4xl mx-auto mt-6 sm:mt-7 leading-relaxed">Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.</p>
+          <motion.button onClick={onEnter} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="mt-10 sm:mt-12 inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_35px_rgba(124,58,237,0.65)] transition font-semibold text-xl sm:text-2xl">
             Begin Your Journey
             <motion.span animate={{ x: [0, 6, 0], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}><Rocket size={24} /></motion.span>
           </motion.button>

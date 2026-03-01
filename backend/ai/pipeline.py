@@ -3,7 +3,7 @@ import json
 import os
 import re
 from urllib.parse import quote
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 class AIPipeline:
@@ -61,20 +61,45 @@ class AIPipeline:
                 },
             }
 
-        classification = self._classify(trimmed)
         entities = self._entities(trimmed)
         context = profile_context or {}
         research = self._research_target_role(context)
-        career = self._career_insights(trimmed, context, research)
-        summary = self._compose_career_summary(career, context, research)
+
+        ai_analysis = self._generate_openai_analysis(trimmed, context, research)
+
+        if ai_analysis:
+            classification = ai_analysis.get("classification") or self._classify(trimmed)
+            summary = ai_analysis.get("summary") or ""
+            profession_scores = ai_analysis.get("profession_scores") or []
+            recommended_professions = ai_analysis.get("recommended_professions") or [
+                item.get("name") for item in profession_scores if isinstance(item, dict) and item.get("name")
+            ]
+
+            career = {
+                "recommended_professions": recommended_professions[:3] if recommended_professions else ["General Professional Role"],
+                "profession_scores": profession_scores[:3] if profession_scores else [{"name": "General Professional Role", "score": 60, "reason": "Limited reliable signals found."}],
+                "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
+                "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
+                "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
+                "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
+                "missing_for_top": ai_analysis.get("missing_for_top") or [],
+                "research_query": (research or {}).get("query", ""),
+                "research_source": (research or {}).get("source", ""),
+            }
+        else:
+            classification = self._classify(trimmed)
+            career = self._career_insights(trimmed, context, research)
+            summary = self._compose_career_summary(career, context, research)
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
             "web_research": research,
+            "analysis_provider": "openai" if ai_analysis else "heuristic",
             **career,
         }
+
         return {
             "summary": summary,
             "classification": classification,
@@ -278,6 +303,141 @@ class AIPipeline:
             "research_query": (research or {}).get("query", ""),
             "research_source": (research or {}).get("source", ""),
         }
+
+    def _extract_json_object(self, content: str) -> dict[str, Any] | None:
+        content = (content or "").strip()
+        if not content:
+            return None
+
+        try:
+            parsed = json.loads(content)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            pass
+
+        match = re.search(r"\{[\s\S]*\}", content)
+        if not match:
+            return None
+
+        try:
+            parsed = json.loads(match.group(0))
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+
+    def _generate_openai_analysis(
+        self,
+        cv_text: str,
+        profile_context: dict[str, str],
+        research: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            return None
+
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        target_title = (profile_context.get("target_job_title") or "").strip()
+        target_desc = (profile_context.get("target_job_description") or "").strip()
+        skills = (profile_context.get("skills") or "").strip()
+
+        prompt = (
+            "Analyze this CV against the target role. Return STRICT JSON only, no markdown. "
+            "Be truthful and evidence-based; if evidence is weak, state that. "
+            "JSON schema: "
+            "{"
+            '"classification": string,'
+            '"summary": string (bullet list with newline separators, each line starts with '- '),' 
+            '"target_alignment": string,'
+            '"cv_strengths_for_target": string[],'
+            '"cv_gaps_for_target": string[],'
+            '"transferable_strengths": string[],'
+            '"missing_for_top": string[],'
+            '"recommended_professions": string[] (3 items max),'
+            '"profession_scores": [{"name": string, "score": number 0-100, "reason": string}] (3 items max)'
+            "}."
+            " Ensure profession_scores reflect CV evidence and target context.\n\n"
+            f"Target Job Title: {target_title or 'Not provided'}\n"
+            f"Target Job Description: {target_desc or 'Not provided'}\n"
+            f"Skills entered by user: {skills or 'Not provided'}\n"
+            f"Web research context: {(research or {}).get('summary', '')}\n"
+            f"CV Text (truncated):\n{cv_text[:3800]}"
+        )
+
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are a precise career-analysis assistant. Output valid JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.1,
+        }
+
+        request = Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST",
+        )
+
+        try:
+            with urlopen(request, timeout=25) as response:  # noqa: S310
+                result = json.loads(response.read().decode("utf-8"))
+            content = (
+                result.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+            parsed = self._extract_json_object(content)
+            if not parsed:
+                return None
+
+            scores = parsed.get("profession_scores") or []
+            cleaned_scores: list[dict[str, Any]] = []
+            for item in scores[:3]:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "").strip()
+                reason = str(item.get("reason") or "").strip()
+                raw_score = item.get("score", 0)
+                try:
+                    numeric = int(float(raw_score))
+                except Exception:
+                    numeric = 0
+                numeric = max(0, min(100, numeric))
+                if name:
+                    cleaned_scores.append({"name": name, "score": numeric, "reason": reason or "CV-to-role match generated from AI analysis."})
+
+            summary = str(parsed.get("summary") or "").strip()
+            if summary:
+                lines = [line.strip() for line in summary.splitlines() if line.strip()]
+                summary = "\n".join(line if line.startswith("- ") else f"- {line.lstrip('- ').strip()}" for line in lines)
+
+            output = {
+                "classification": str(parsed.get("classification") or "CV"),
+                "summary": summary,
+                "target_alignment": str(parsed.get("target_alignment") or ""),
+                "cv_strengths_for_target": [str(x).strip() for x in (parsed.get("cv_strengths_for_target") or []) if str(x).strip()][:6],
+                "cv_gaps_for_target": [str(x).strip() for x in (parsed.get("cv_gaps_for_target") or []) if str(x).strip()][:6],
+                "transferable_strengths": [str(x).strip() for x in (parsed.get("transferable_strengths") or []) if str(x).strip()][:6],
+                "missing_for_top": [str(x).strip() for x in (parsed.get("missing_for_top") or []) if str(x).strip()][:6],
+                "recommended_professions": [str(x).strip() for x in (parsed.get("recommended_professions") or []) if str(x).strip()][:3],
+                "profession_scores": cleaned_scores,
+            }
+
+            if not output["profession_scores"] and output["recommended_professions"]:
+                output["profession_scores"] = [
+                    {"name": role, "score": max(55, 85 - idx * 8), "reason": "AI role-match rationale was unavailable; fallback scoring applied."}
+                    for idx, role in enumerate(output["recommended_professions"][:3])
+                ]
+
+            return output
+        except Exception:
+            return None
+
 
     def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str], research: dict[str, Any] | None = None) -> str:
         top_roles = career.get("recommended_professions", [])[:2]
