@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Brain, CircleDot, BookOpen, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
+import axios from 'axios'
 import api from '../services/api'
 
 type ProfessionScore = {
@@ -78,6 +79,7 @@ function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: R
 export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
@@ -87,9 +89,33 @@ export default function AnalysisPage() {
 
     const run = async () => {
       setIsLoading(true)
+      setError(null)
       try {
-        const response = await api.post<Analysis>(`/analyze/${documentId}`)
-        setAnalysis(response.data)
+        let lastError: unknown = null
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const response = await api.post<Analysis>(`/analyze/${documentId}`, undefined, { timeout: 300000 })
+            setAnalysis(response.data)
+            lastError = null
+            break
+          } catch (innerErr) {
+            lastError = innerErr
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)))
+            }
+          }
+        }
+
+        if (lastError) {
+          throw lastError
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const detail = err.response?.data?.detail
+          setError(typeof detail === 'string' ? detail : 'Analysis failed. Please try another document or retry.')
+        } else {
+          setError('Analysis failed unexpectedly. Please try again.')
+        }
       } finally {
         setIsLoading(false)
       }
@@ -134,6 +160,13 @@ export default function AnalysisPage() {
         <div className="relative z-10 max-w-[1180px] mx-auto">
           {isLoading ? (
             <AnalysisLoader />
+          ) : error ? (
+            <div className="min-h-[52vh] flex flex-col items-center justify-center text-center">
+              <p className="text-xl text-pink-200 mb-5 max-w-2xl">{error}</p>
+              <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-7 py-2.5 rounded-2xl text-lg md:text-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
+                Back to Dashboard
+              </motion.button>
+            </div>
           ) : (
             <>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-7">
