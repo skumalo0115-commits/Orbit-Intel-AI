@@ -12,6 +12,8 @@ interface DocumentItem {
   upload_date: string
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function useTypingText(text: string, speed = 45) {
   const [value, setValue] = useState('')
   useEffect(() => {
@@ -91,6 +93,32 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
   }
 
+  const recoverUploadedDocument = async (filename: string) => {
+    setStatusMessage('Finalising upload...')
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 20000 })
+        const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
+        const recovered = latestDocs.find((doc) => doc.filename === filename)
+
+        if (recovered) {
+          setDocs(latestDocs)
+          sessionStorage.setItem(docsCacheKey, JSON.stringify(latestDocs))
+          setCvFile(null)
+          onSelect(recovered.id)
+          return true
+        }
+      } catch {
+        // Keep retrying below.
+      }
+
+      await sleep(900 * (attempt + 1))
+    }
+
+    return false
+  }
+
   const uploadCV = async () => {
     if (!cvFile) {
       setError('Please upload your CV before continuing.')
@@ -115,23 +143,12 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       })
       onSelect(uploadedDocument.id)
     } catch (err) {
+      const recovered = await recoverUploadedDocument(cvFile.name)
+      if (recovered) return
+
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail
-        setError(typeof detail === 'string' ? detail : 'Upload failed before analysis could start. Please try again.')
-
-        try {
-          setStatusMessage('Verifying upload status...')
-          const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 10000 })
-          const recovered = refresh.data.find((doc) => doc.filename === cvFile.name)
-          if (recovered) {
-            setDocs(refresh.data)
-            sessionStorage.setItem(docsCacheKey, JSON.stringify(refresh.data))
-            onSelect(recovered.id)
-            return
-          }
-        } catch {
-          // If verification fails, keep dashboard error shown for retry.
-        }
+        setError(typeof detail === 'string' ? detail : 'We could not complete your upload right now. Please try again.')
       } else {
         setError('Unexpected upload issue. Please try again.')
       }
