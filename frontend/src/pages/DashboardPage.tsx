@@ -1,5 +1,5 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useMotionTemplate, useScroll, useSpring, useTransform } from 'framer-motion'
 import { Brain, Sparkles, Upload } from 'lucide-react'
 import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
@@ -42,6 +42,11 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const [isDragging, setIsDragging] = useState(false)
   const title = useTypingText('AI Career Intelligence System', 60)
   const docsCacheKey = 'dashboard_docs_cache'
+  const { scrollY } = useScroll()
+  const rawOpacity = useTransform(scrollY, [80, 360], [1, 0.58])
+  const contentOpacity = useSpring(rawOpacity, { stiffness: 110, damping: 28 })
+  const rawBlur = useTransform(scrollY, [80, 360], [0, 5])
+  const blurFilter = useMotionTemplate`blur(${rawBlur}px)`
 
   const loadDocuments = async () => {
     try {
@@ -206,7 +211,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         <div className="absolute inset-0" style={bgStyle} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,217,255,0.16),transparent_48%)]" />
 
-        <div className="relative z-10 max-w-[1280px] mx-auto">
+        <motion.div className="relative z-10 max-w-[1280px] mx-auto" style={{ opacity: contentOpacity, filter: blurFilter }}>
           <div className="text-center mb-8">
             <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
               <Brain className="text-cyan-300" size={46} />
@@ -271,7 +276,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
               <DocumentCard key={doc.id} filename={doc.filename} date={doc.upload_date} isAnalyzed={Boolean(doc.is_analyzed)} onAnalyse={() => onSelect(doc.id)} onDelete={() => removeDocument(doc.id)} />
             ))}
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       <AppFooter />
