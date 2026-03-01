@@ -32,6 +32,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const [interests, setInterests] = useState('')
   const [cvFile, setCvFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const title = useTypingText('AI Career Intelligence System')
@@ -82,41 +83,45 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
 
     setError(null)
+    setStatusMessage('Uploading CV...')
     setIsUploading(true)
     try {
       const formData = new FormData()
       formData.append('file', cvFile)
-      const response = await api.post<DocumentItem>('/upload', formData)
+      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 45000 })
+      const uploadedDocument = response.data
+
+      setStatusMessage('Opening analysis...')
       setCvFile(null)
       setDocs((prev) => {
-        const next = [response.data, ...prev.filter((item) => item.id !== response.data.id)]
+        const next = [uploadedDocument, ...prev.filter((item) => item.id !== uploadedDocument.id)]
         sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
         return next
       })
-      onSelect(response.data.id)
+      onSelect(uploadedDocument.id)
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        const status = err.response?.status
-        const detail = err.response?.data && typeof err.response.data === 'object' && 'detail' in err.response.data
-          ? (err.response.data as { detail?: unknown }).detail
-          : null
-        const detailMessage = typeof detail === 'string' ? detail : null
+        const detail = err.response?.data?.detail
+        setError(typeof detail === 'string' ? detail : 'Upload failed before analysis could start. Please try again.')
 
-        if (status === 401) {
-          setError('Your session has expired. Please sign out and sign in again, then retry the upload.')
-        } else if (status === 413) {
-          setError('This CV file is too large. Please upload a smaller PDF or DOCX file.')
-        } else if (detailMessage) {
-          setError(detailMessage)
-        } else if (!err.response) {
-          setError('Cannot reach the API server. Please check backend status / API URL and try again.')
-        } else {
-          setError(`Upload failed (HTTP ${status ?? 'unknown'}). Please try again.`)
+        try {
+          setStatusMessage('Verifying upload status...')
+          const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 10000 })
+          const recovered = refresh.data.find((doc) => doc.filename === cvFile.name)
+          if (recovered) {
+            setDocs(refresh.data)
+            sessionStorage.setItem(docsCacheKey, JSON.stringify(refresh.data))
+            onSelect(recovered.id)
+            return
+          }
+        } catch {
+          // If verification fails, keep dashboard error shown for retry.
         }
       } else {
-        setError('Upload failed unexpectedly. Please try again.')
+        setError('Unexpected upload issue. Please try again.')
       }
     } finally {
+      setStatusMessage(null)
       setIsUploading(false)
     }
   }
@@ -171,10 +176,11 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             >
               <Upload className="inline mr-2" />
               {cvFile ? cvFile.name : 'Drop your CV here or click to browse'}
-              <input type="file" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null) }} />
+              <input type="file" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
             </label>
 
             {error && <p className="text-pink-200 mb-3 text-base">{error}</p>}
+            {statusMessage && <p className="text-cyan-200 mb-3 text-base">{statusMessage}</p>}
 
             <motion.button
               onClick={uploadCV}
@@ -182,7 +188,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
               whileTap={{ scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 280, damping: 20 }}
               className="w-full py-3 rounded-2xl text-lg font-semibold bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-neon disabled:opacity-65 disabled:cursor-not-allowed"
-              disabled={isUploading || !cvFile}
+              disabled={isUploading}
             >
               {isUploading ? 'Uploading CV...' : 'Analyse Career Path'}
             </motion.button>

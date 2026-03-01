@@ -1,5 +1,4 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react'
-import axios from 'axios'
 import { motion } from 'framer-motion'
 import { Brain, CircleDot, BookOpen, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -30,11 +29,11 @@ function AnalysisLoader() {
   return (
     <div className="min-h-[52vh] flex flex-col items-center justify-center text-center">
       <div className="relative w-32 h-32 mb-7">
-        <motion.div className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400" animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} />
-        <motion.div className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300" animate={{ rotate: -360 }} transition={{ duration: 0.95, repeat: Infinity, ease: 'linear' }} />
-        <motion.div className="absolute inset-[24px] rounded-full border-2 border-cyan-300/60" animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute inset-0 rounded-full border-4 border-transparent border-t-cyan-300 border-r-violet-400" animate={{ rotate: 360 }} transition={{ duration: 0.82, repeat: Infinity, ease: 'linear' }} />
+        <motion.div className="absolute inset-3 rounded-full border-4 border-transparent border-b-fuchsia-400 border-l-cyan-300" animate={{ rotate: -360 }} transition={{ duration: 0.72, repeat: Infinity, ease: 'linear' }} />
+        <motion.div className="absolute inset-[24px] rounded-full border-2 border-cyan-300/60" animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.5, 1, 0.5] }} transition={{ duration: 0.88, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
-      <motion.p className="text-3xl md:text-4xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent" animate={{ opacity: [0.5, 1, 0.5], y: [0, -2, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}>
+      <motion.p className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent" animate={{ opacity: [0.5, 1, 0.5], y: [0, -2, 0] }} transition={{ duration: 0.72, repeat: Infinity, ease: 'easeInOut' }}>
         Analysing your career path...
       </motion.p>
     </div>
@@ -50,24 +49,24 @@ function MatchCard({ name, score, reason, delay }: { name: string; score: number
   }, [score, delay])
 
   return (
-    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.35, delay: delay * 0.07 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
+    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -6, scale: 1.02, boxShadow: '0 18px 36px rgba(124,58,237,0.25)' }} transition={{ duration: 0.35, delay: delay * 0.07 }} className="rounded-2xl border border-white/20 p-3.5 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="text-3xl font-semibold">{name}</h3>
-        <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-xl">{score}%</span>
+        <h3 className="text-2xl font-semibold">{name}</h3>
+        <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-lg">{score}%</span>
       </div>
       <div className="h-2.5 rounded-full bg-white/15 mb-3 overflow-hidden">
         <motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.9, ease: 'easeOut' }} />
       </div>
-      <p className="text-[#d6ddef] text-lg leading-relaxed">{reason}</p>
+      <p className="text-[#d6ddef] text-base leading-relaxed">{reason}</p>
     </motion.article>
   )
 }
 
 function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: ReactNode; items: string[]; dotColor: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-white/10 backdrop-blur-xl">
-      <h3 className="text-4xl font-semibold mb-3 inline-flex items-center gap-2">{icon}{title}</h3>
-      <ul className="space-y-2 text-xl text-[#d7deea]">
+    <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-3.5 bg-white/10 backdrop-blur-xl">
+      <h3 className="text-2xl font-semibold mb-3 inline-flex items-center gap-2">{icon}{title}</h3>
+      <ul className="space-y-2 text-base text-[#d7deea]">
         {items.map((item) => (
           <li key={item} className="flex items-start gap-2"><span className={dotColor}>●</span><span>{item}</span></li>
         ))}
@@ -79,7 +78,6 @@ function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: R
 export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
@@ -89,19 +87,9 @@ export default function AnalysisPage() {
 
     const run = async () => {
       setIsLoading(true)
-      setError(null)
       try {
         const response = await api.post<Analysis>(`/analyze/${documentId}`)
         setAnalysis(response.data)
-      } catch (err) {
-        if (axios.isAxiosError(err)) {
-          const detail = err.response?.data && typeof err.response.data === 'object' && 'detail' in err.response.data
-            ? (err.response.data as { detail?: unknown }).detail
-            : null
-          setError(typeof detail === 'string' ? detail : 'Failed to run analysis. Please return to dashboard and try again.')
-        } else {
-          setError('Failed to run analysis. Please return to dashboard and try again.')
-        }
       } finally {
         setIsLoading(false)
       }
@@ -146,28 +134,19 @@ export default function AnalysisPage() {
         <div className="relative z-10 max-w-[1180px] mx-auto">
           {isLoading ? (
             <AnalysisLoader />
-          ) : error ? (
-            <div className="rounded-2xl border border-pink-300/50 bg-pink-500/10 p-6 text-center">
-              <p className="text-2xl text-pink-100">{error}</p>
-              <div className="mt-5 flex justify-center">
-                <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-8 py-3 rounded-2xl text-2xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
-                  Back to Dashboard
-                </motion.button>
-              </div>
-            </div>
           ) : (
             <>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-7">
                 <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
                   <Brain className="text-cyan-300" size={44} />
                 </motion.div>
-                <h1 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
-                <p className="text-[#d2d9e7] text-xl mt-2">Next-generation career guidance powered by artificial intelligence</p>
+                <h1 className="font-['Space_Grotesk'] text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">AI Career Intelligence System</h1>
+                <p className="text-[#d2d9e7] text-lg mt-2">Next-generation career guidance powered by artificial intelligence</p>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mb-4 flex items-center gap-2">
                 <Target className="text-cyan-300" size={30} />
-                <h2 className="text-5xl font-semibold">Top Career Matches</h2>
+                <h2 className="text-3xl md:text-4xl font-semibold">Top Career Matches</h2>
               </motion.div>
 
               <div className="grid xl:grid-cols-3 gap-4 mb-4">
@@ -181,14 +160,14 @@ export default function AnalysisPage() {
                 <InsightPanel title="Learning Path" icon={<BookOpen className="text-pink-300" size={24} />} items={improvements} dotColor="text-pink-300 mt-1" />
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-white/10 backdrop-blur-xl">
-                <h3 className="text-4xl font-semibold mb-2">Document Summary</h3>
-                <p className="text-xl text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-3.5 bg-white/10 backdrop-blur-xl">
+                <h3 className="text-2xl font-semibold mb-2">Document Summary</h3>
+                <p className="text-base text-[#d7deea] leading-relaxed">{analysis?.summary || 'No summary was generated.'}</p>
                 <p className="text-lg text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
               </motion.div>
 
               <div className="mt-7 flex justify-center">
-                <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-8 py-3 rounded-2xl text-3xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
+                <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-7 py-2.5 rounded-2xl text-lg md:text-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
                   Start New Analyse
                 </motion.button>
               </div>
