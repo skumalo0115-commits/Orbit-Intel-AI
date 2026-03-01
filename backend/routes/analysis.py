@@ -58,7 +58,10 @@ def analyze_document(
         "target_job_title": payload.target_job_title or "",
         "target_job_description": payload.target_job_description or "",
     } if payload else {}
-    result = ai_pipeline.analyze(text_content, profile_context=profile_context)
+    try:
+        result = ai_pipeline.analyze(text_content, profile_context=profile_context)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
         record = Analysis(document_id=doc.id)

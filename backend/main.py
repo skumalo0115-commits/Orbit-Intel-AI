@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +39,21 @@ def healthcheck():
     if index_file.exists():
         return FileResponse(index_file)
     return {"status": "ok", "service": "NebulaGlass AI"}
+
+
+@app.get("/env-check")
+def env_check():
+    required_vars = ["SECRET_KEY", "DATABASE_URL", "OPENAI_API_KEY"]
+    optional_vars = ["OPENAI_MODEL"]
+
+    required = {name: bool(os.getenv(name, "").strip()) for name in required_vars}
+    optional = {name: bool(os.getenv(name, "").strip()) for name in optional_vars}
+
+    return {
+        "ready": all(required.values()),
+        "required": required,
+        "optional": optional,
+    }
 
 
 @app.get("/{full_path:path}")

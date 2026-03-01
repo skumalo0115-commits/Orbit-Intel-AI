@@ -65,38 +65,39 @@ class AIPipeline:
         context = profile_context or {}
         research = self._research_target_role(context)
 
+        if not os.getenv("OPENAI_API_KEY", "").strip():
+            raise RuntimeError("OPENAI_API_KEY is required. Analysis page is configured to use ChatGPT for all results.")
+
         ai_analysis = self._generate_openai_analysis(trimmed, context, research)
+        if not ai_analysis:
+            raise RuntimeError("ChatGPT analysis request failed. Please retry in a moment.")
 
-        if ai_analysis:
-            classification = ai_analysis.get("classification") or self._classify(trimmed)
-            summary = ai_analysis.get("summary") or ""
-            profession_scores = ai_analysis.get("profession_scores") or []
-            recommended_professions = ai_analysis.get("recommended_professions") or [
-                item.get("name") for item in profession_scores if isinstance(item, dict) and item.get("name")
-            ]
+        classification = ai_analysis.get("classification") or "CV"
+        summary = ai_analysis.get("summary") or ""
+        profession_scores = ai_analysis.get("profession_scores") or []
+        recommended_professions = ai_analysis.get("recommended_professions") or []
 
-            career = {
-                "recommended_professions": recommended_professions[:3] if recommended_professions else ["General Professional Role"],
-                "profession_scores": profession_scores[:3] if profession_scores else [{"name": "General Professional Role", "score": 60, "reason": "Limited reliable signals found."}],
-                "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
-                "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
-                "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
-                "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
-                "missing_for_top": ai_analysis.get("missing_for_top") or [],
-                "research_query": (research or {}).get("query", ""),
-                "research_source": (research or {}).get("source", ""),
-            }
-        else:
-            classification = self._classify(trimmed)
-            career = self._career_insights(trimmed, context, research)
-            summary = self._compose_career_summary(career, context, research)
+        if not summary or not profession_scores or not recommended_professions:
+            raise RuntimeError("ChatGPT returned an incomplete analysis payload. Please retry.")
+
+        career = {
+            "recommended_professions": recommended_professions[:3],
+            "profession_scores": profession_scores[:3],
+            "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
+            "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
+            "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
+            "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
+            "missing_for_top": ai_analysis.get("missing_for_top") or [],
+            "research_query": (research or {}).get("query", ""),
+            "research_source": (research or {}).get("source", ""),
+        }
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
             "web_research": research,
-            "analysis_provider": "openai" if ai_analysis else "heuristic",
+            "analysis_provider": "openai",
             **career,
         }
 
@@ -428,11 +429,8 @@ class AIPipeline:
                 "profession_scores": cleaned_scores,
             }
 
-            if not output["profession_scores"] and output["recommended_professions"]:
-                output["profession_scores"] = [
-                    {"name": role, "score": max(55, 85 - idx * 8), "reason": "AI role-match rationale was unavailable; fallback scoring applied."}
-                    for idx, role in enumerate(output["recommended_professions"][:3])
-                ]
+            if not output["profession_scores"] or not output["recommended_professions"] or not output["summary"]:
+                return None
 
             return output
         except Exception:
