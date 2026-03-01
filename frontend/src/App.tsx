@@ -83,14 +83,14 @@ export default function App() {
     <>
       {location.pathname !== '/' && <SpaceBackground />}
       {location.pathname !== '/' && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} onSignOut={signOut} profileInitial={profileInitial} />}
+      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onSignOut={signOut} profileInitial={profileInitial} />}
 
       <div className="min-h-screen">
         <main>
           <Routes>
             <Route
               path="/"
-              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} />}
+              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} onSignOut={signOut} />}
             />
             <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" /> : <div className="min-h-screen flex items-center justify-center p-6"><AuthCard onAuthenticated={authRefresh} /></div>} />
             <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />
