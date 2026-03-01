@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import MouseGlow from './components/MouseGlow'
 import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
 import SpaceBackground from './components/SpaceBackground'
 import { useAuth } from './hooks/useAuth'
 import AnalysisPage from './pages/AnalysisPage'
@@ -56,10 +55,9 @@ function AuthCard({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 export default function App() {
-  const { isAuthenticated, saveToken } = useAuth()
+  const { isAuthenticated, saveToken, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   const authRefresh = () => {
@@ -74,23 +72,30 @@ export default function App() {
     return email ? email[0].toUpperCase() : 'U'
   }, [isAuthenticated])
 
+  const signOut = () => {
+    logout()
+    localStorage.removeItem('profile_email')
+    setShowAuthModal(false)
+    navigate('/')
+  }
+
   return (
     <>
       {location.pathname !== '/' && <SpaceBackground />}
       {location.pathname !== '/' && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} profileInitial={profileInitial} />}
+      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onResults={() => navigate('/dashboard#results')} onSignOut={signOut} profileInitial={profileInitial} />}
 
-      <div className={isAuthenticated ? 'lg:grid lg:grid-cols-[260px_1fr] min-h-screen' : 'min-h-screen'}>
-        {isAuthenticated && location.pathname !== '/' && <div className="hidden lg:block p-6 pt-28"><Sidebar /></div>}
+      <div className="min-h-screen">
         <main>
           <Routes>
             <Route
               path="/"
-              element={<LandingPage onEnter={() => setShowAuthModal(true)} isAuthenticated={isAuthenticated} profileInitial={profileInitial} />}
+              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} />}
             />
             <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" /> : <div className="min-h-screen flex items-center justify-center p-6"><AuthCard onAuthenticated={authRefresh} /></div>} />
-            <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => { setSelectedId(id); navigate('/analysis') }} /> : <Navigate to="/auth" />} />
-            <Route path="/analysis" element={isAuthenticated && selectedId ? <AnalysisPage documentId={selectedId} /> : <Navigate to="/dashboard" />} />
+            <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />
+            <Route path="/analysis/:documentId" element={isAuthenticated ? <AnalysisPage /> : <Navigate to="/auth" />} />
+            <Route path="/analysis" element={<Navigate to="/dashboard" />} />
           </Routes>
         </main>
       </div>
