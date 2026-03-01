@@ -26,6 +26,9 @@ interface Analysis {
 type ProfileContext = {
   interests?: string
   skills?: string
+  profession?: string
+  target_job_title?: string
+  target_job_description?: string
 }
 
 function useTypingText(text: string, speed = 24) {
@@ -90,11 +93,6 @@ export default function AnalysisPage() {
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
-  const { scrollY } = useScroll()
-  const rawOpacity = useTransform(scrollY, [80, 360], [1, 0.56])
-  const contentOpacity = useSpring(rawOpacity, { stiffness: 110, damping: 28 })
-  const rawBlur = useTransform(scrollY, [80, 360], [0, 5])
-  const blurFilter = useMotionTemplate`blur(${rawBlur}px)`
 
   useEffect(() => {
     if (!Number.isFinite(documentId) || documentId <= 0) return
@@ -177,7 +175,7 @@ export default function AnalysisPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(5,8,18,0.75),rgba(5,8,18,0.82))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.35),transparent_58%)]" />
 
-        <motion.div className="relative z-10 max-w-[1180px] mx-auto" style={{ opacity: contentOpacity, filter: blurFilter }}>
+        <motion.div className="relative z-10 max-w-[1180px] mx-auto">
           {isLoading ? (
             <AnalysisLoader />
           ) : error ? (
@@ -217,7 +215,7 @@ export default function AnalysisPage() {
 
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.16),rgba(15,23,42,0.7)) ]">
                 <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
-                <p className="text-base text-[#d7deea] leading-relaxed min-h-[120px]">{typedSummary}</p>
+                <p className="text-base text-[#d7deea] leading-relaxed min-h-[120px] whitespace-pre-line">{typedSummary}</p>
                 <p className="text-lg text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
               </motion.div>
 
