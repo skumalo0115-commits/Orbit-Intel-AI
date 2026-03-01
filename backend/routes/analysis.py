@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from backend.ai.extraction import TextExtractor
 from backend.ai.pipeline import ai_pipeline
 from backend.database.session import get_db
 from backend.models.analysis import Analysis
@@ -23,7 +24,21 @@ def analyze_document(document_id: int, db: Session = Depends(get_db), current_us
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    result = ai_pipeline.analyze(doc.text or "")
+    text_content = (doc.text or "").strip()
+    if not text_content:
+        try:
+            text_content = TextExtractor.extract(doc.file_path)
+            doc.text = text_content
+            db.add(doc)
+            db.commit()
+            db.refresh(doc)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"We could not read this file for analysis. Please upload PDF, DOCX, DOC, TXT, CSV, RTF, PNG, or JPG/JPEG. ({exc})",
+            ) from exc
+
+    result = ai_pipeline.analyze(text_content)
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
         record = Analysis(document_id=doc.id)

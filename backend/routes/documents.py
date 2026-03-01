@@ -1,11 +1,9 @@
-import logging
 import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from backend.ai.extraction import TextExtractor
 from backend.database.config import get_settings
 from backend.database.session import get_db
 from backend.models.document import Document
@@ -15,8 +13,6 @@ from backend.services.dependencies import get_current_user
 
 router = APIRouter(tags=["documents"])
 settings = get_settings()
-logger = logging.getLogger(__name__)
-
 
 @router.post("/upload", response_model=DocumentResponse)
 def upload_document(
@@ -24,7 +20,7 @@ def upload_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    allowed = {".pdf", ".docx", ".txt", ".csv", ".png", ".jpg", ".jpeg"}
+    allowed = {".pdf", ".docx", ".doc", ".txt", ".csv", ".rtf", ".png", ".jpg", ".jpeg"}
     extension = Path(file.filename).suffix.lower()
     if extension not in allowed:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported file type")
@@ -36,13 +32,8 @@ def upload_document(
     with target_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    try:
-        extracted_text = TextExtractor.extract(str(target_path))
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Text extraction failed for %s", target_path)
-        extracted_text = ""
-
-    document = Document(user_id=current_user.id, filename=file.filename, file_path=str(target_path), text=extracted_text)
+    # Keep upload fast and reliable: defer heavy text extraction to analysis time.
+    document = Document(user_id=current_user.id, filename=file.filename, file_path=str(target_path), text="")
     db.add(document)
     db.commit()
     db.refresh(document)
