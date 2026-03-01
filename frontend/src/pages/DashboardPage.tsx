@@ -12,6 +12,8 @@ interface DocumentItem {
   upload_date: string
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function useTypingText(text: string, speed = 45) {
   const [value, setValue] = useState('')
   useEffect(() => {
@@ -39,21 +41,36 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const docsCacheKey = 'dashboard_docs_cache'
 
   const loadDocuments = async () => {
-    const response = await api.get<DocumentItem[]>('/documents')
-    setDocs(response.data)
-    sessionStorage.setItem(docsCacheKey, JSON.stringify(response.data))
+    try {
+      const response = await api.get<DocumentItem[]>('/documents')
+      const nextDocs = Array.isArray(response.data) ? response.data : []
+      setDocs(nextDocs)
+      sessionStorage.setItem(docsCacheKey, JSON.stringify(nextDocs))
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        setError(typeof detail === 'string' ? detail : 'Unable to load dashboard data right now. Please try again shortly.')
+      } else {
+        setError('Unable to load dashboard data right now. Please try again shortly.')
+      }
+    }
   }
 
   useEffect(() => {
     const cached = sessionStorage.getItem(docsCacheKey)
     if (cached) {
       try {
-        setDocs(JSON.parse(cached) as DocumentItem[])
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed)) {
+          setDocs(parsed as DocumentItem[])
+        } else {
+          sessionStorage.removeItem(docsCacheKey)
+        }
       } catch {
         sessionStorage.removeItem(docsCacheKey)
       }
     }
-    loadDocuments()
+    void loadDocuments()
   }, [])
 
   const bgStyle = useMemo(
@@ -76,6 +93,32 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
   }
 
+  const recoverUploadedDocument = async (filename: string) => {
+    setStatusMessage('Finalising upload...')
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 20000 })
+        const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
+        const recovered = latestDocs.find((doc) => doc.filename === filename)
+
+        if (recovered) {
+          setDocs(latestDocs)
+          sessionStorage.setItem(docsCacheKey, JSON.stringify(latestDocs))
+          setCvFile(null)
+          onSelect(recovered.id)
+          return true
+        }
+      } catch {
+        // Keep retrying below.
+      }
+
+      await sleep(900 * (attempt + 1))
+    }
+
+    return false
+  }
+
   const uploadCV = async () => {
     if (!cvFile) {
       setError('Please upload your CV before continuing.')
@@ -88,7 +131,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     try {
       const formData = new FormData()
       formData.append('file', cvFile)
-      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 45000 })
+      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 180000 })
       const uploadedDocument = response.data
 
       setStatusMessage('Opening analysis...')
@@ -100,23 +143,12 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       })
       onSelect(uploadedDocument.id)
     } catch (err) {
+      const recovered = await recoverUploadedDocument(cvFile.name)
+      if (recovered) return
+
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail
-        setError(typeof detail === 'string' ? detail : 'Upload failed before analysis could start. Please try again.')
-
-        try {
-          setStatusMessage('Verifying upload status...')
-          const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 10000 })
-          const recovered = refresh.data.find((doc) => doc.filename === cvFile.name)
-          if (recovered) {
-            setDocs(refresh.data)
-            sessionStorage.setItem(docsCacheKey, JSON.stringify(refresh.data))
-            onSelect(recovered.id)
-            return
-          }
-        } catch {
-          // If verification fails, keep dashboard error shown for retry.
-        }
+        setError(typeof detail === 'string' ? detail : 'We could not complete your upload right now. Please try again.')
       } else {
         setError('Unexpected upload issue. Please try again.')
       }
@@ -127,12 +159,21 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   }
 
   const removeDocument = async (id: number) => {
-    await api.delete(`/documents/${id}`)
-    setDocs((prev) => {
-      const next = prev.filter((doc) => doc.id !== id)
-      sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
-      return next
-    })
+    try {
+      await api.delete(`/documents/${id}`)
+      setDocs((prev) => {
+        const next = prev.filter((doc) => doc.id !== id)
+        sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
+        return next
+      })
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        setError(typeof detail === 'string' ? detail : 'Unable to delete this document right now. Please try again.')
+      } else {
+        setError('Unable to delete this document right now. Please try again.')
+      }
+    }
   }
 
   return (
@@ -176,7 +217,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             >
               <Upload className="inline mr-2" />
               {cvFile ? cvFile.name : 'Drop your CV here or click to browse'}
-              <input type="file" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
+              <input type="file" accept=".pdf,.doc,.docx,.txt,.csv,.rtf,.png,.jpg,.jpeg" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
             </label>
 
             {error && <p className="text-pink-200 mb-3 text-base">{error}</p>}
