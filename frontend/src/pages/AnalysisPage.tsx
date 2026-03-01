@@ -23,6 +23,11 @@ interface Analysis {
   }
 }
 
+type ProfileContext = {
+  interests?: string
+  skills?: string
+}
+
 function useTypingText(text: string, speed = 24) {
   const [value, setValue] = useState('')
 
@@ -99,9 +104,17 @@ export default function AnalysisPage() {
       setError(null)
       try {
         let lastError: unknown = null
+        let profileContext: ProfileContext = {}
+        try {
+          const raw = sessionStorage.getItem('dashboard_profile_context')
+          profileContext = raw ? (JSON.parse(raw) as ProfileContext) : {}
+        } catch {
+          profileContext = {}
+        }
+
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
-            const response = await api.post<Analysis>(`/analyze/${documentId}`, undefined, { timeout: 300000 })
+            const response = await api.post<Analysis>(`/analyze/${documentId}`, profileContext, { timeout: 300000 })
             setAnalysis(response.data)
             lastError = null
             break
@@ -146,25 +159,7 @@ export default function AnalysisPage() {
 
   const heading = useTypingText('AI Career Intelligence System', 60)
 
-  const profileContext = useMemo(() => {
-    try {
-      const raw = sessionStorage.getItem('dashboard_profile_context')
-      return raw ? (JSON.parse(raw) as { interests?: string; skills?: string }) : null
-    } catch {
-      return null
-    }
-  }, [])
-
-  const summaryText = useMemo(() => {
-    const base = analysis?.summary?.trim() || 'No summary was generated.'
-    const interests = profileContext?.interests?.trim()
-
-    if (!interests) return `${base} Focus on deepening your strongest matched skills and building portfolio-ready outcomes.`
-
-    return `${base} Based on your stated interests (${interests}), focus on projects and certifications that align directly with your top career matches.`
-  }, [analysis?.summary, profileContext])
-
-  const typedSummary = useTypingText(summaryText, 22)
+  const typedSummary = useTypingText(analysis?.summary?.trim() || 'No summary was generated.', 22)
 
   const bgStyle = useMemo(
     () => ({
