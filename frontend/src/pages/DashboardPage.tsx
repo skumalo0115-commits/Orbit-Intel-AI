@@ -1,5 +1,5 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useMotionTemplate, useScroll, useSpring, useTransform } from 'framer-motion'
 import { Brain, Sparkles, Upload } from 'lucide-react'
 import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
@@ -10,7 +10,12 @@ interface DocumentItem {
   id: number
   filename: string
   upload_date: string
+  is_analyzed?: boolean
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const uploadableExtensions = ['.pdf', '.docx', '.png', '.jpg', '.jpeg']
 
 function useTypingText(text: string, speed = 45) {
   const [value, setValue] = useState('')
@@ -35,25 +40,45 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const title = useTypingText('AI Career Intelligence System')
+  const title = useTypingText('AI Career Intelligence System', 60)
   const docsCacheKey = 'dashboard_docs_cache'
+  const { scrollY } = useScroll()
+  const rawOpacity = useTransform(scrollY, [80, 360], [1, 0.58])
+  const contentOpacity = useSpring(rawOpacity, { stiffness: 110, damping: 28 })
+  const rawBlur = useTransform(scrollY, [80, 360], [0, 5])
+  const blurFilter = useMotionTemplate`blur(${rawBlur}px)`
 
   const loadDocuments = async () => {
-    const response = await api.get<DocumentItem[]>('/documents')
-    setDocs(response.data)
-    sessionStorage.setItem(docsCacheKey, JSON.stringify(response.data))
+    try {
+      const response = await api.get<DocumentItem[]>('/documents')
+      const nextDocs = Array.isArray(response.data) ? response.data : []
+      setDocs(nextDocs)
+      sessionStorage.setItem(docsCacheKey, JSON.stringify(nextDocs))
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        setError(typeof detail === 'string' ? detail : 'Unable to load dashboard data right now. Please try again shortly.')
+      } else {
+        setError('Unable to load dashboard data right now. Please try again shortly.')
+      }
+    }
   }
 
   useEffect(() => {
     const cached = sessionStorage.getItem(docsCacheKey)
     if (cached) {
       try {
-        setDocs(JSON.parse(cached) as DocumentItem[])
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed)) {
+          setDocs(parsed as DocumentItem[])
+        } else {
+          sessionStorage.removeItem(docsCacheKey)
+        }
       } catch {
         sessionStorage.removeItem(docsCacheKey)
       }
     }
-    loadDocuments()
+    void loadDocuments()
   }, [])
 
   const bgStyle = useMemo(
@@ -76,11 +101,48 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
   }
 
+  const recoverUploadedDocument = async (filename: string, existingDocIds: Set<number>) => {
+    setStatusMessage('Finalising upload...')
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 60000 })
+        const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
+        const recoveredByName = latestDocs.find((doc) => doc.filename === filename)
+        const recoveredByNewId = latestDocs.find((doc) => !existingDocIds.has(doc.id))
+        const recovered = recoveredByName ?? recoveredByNewId
+
+        if (recovered) {
+          setDocs(latestDocs)
+          sessionStorage.setItem(docsCacheKey, JSON.stringify(latestDocs))
+          setCvFile(null)
+          sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, interests }))
+          onSelect(recovered.id)
+          return true
+        }
+      } catch {
+        // Keep retrying below.
+      }
+
+      await sleep(Math.min(2500 * (attempt + 1), 12000))
+    }
+
+    return false
+  }
+
   const uploadCV = async () => {
     if (!cvFile) {
       setError('Please upload your CV before continuing.')
       return
     }
+
+    const extension = `.${cvFile.name.split('.').pop()?.toLowerCase() ?? ''}`
+    if (!uploadableExtensions.includes(extension)) {
+      setError('Please upload a PDF, DOCX, JPG, JPEG, or PNG file.')
+      return
+    }
+
+    const existingDocIds = new Set(docs.map((doc) => doc.id))
 
     setError(null)
     setStatusMessage('Uploading CV...')
@@ -88,10 +150,11 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     try {
       const formData = new FormData()
       formData.append('file', cvFile)
-      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 45000 })
+      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 600000 })
       const uploadedDocument = response.data
 
-      setStatusMessage('Opening analysis...')
+      setStatusMessage('Uploading complete. Starting analysis...')
+      sessionStorage.setItem('dashboard_profile_context', JSON.stringify({ skills, interests }))
       setCvFile(null)
       setDocs((prev) => {
         const next = [uploadedDocument, ...prev.filter((item) => item.id !== uploadedDocument.id)]
@@ -100,22 +163,20 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       })
       onSelect(uploadedDocument.id)
     } catch (err) {
+      const recovered = await recoverUploadedDocument(cvFile.name, existingDocIds)
+      if (recovered) return
+
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail
-        setError(typeof detail === 'string' ? detail : 'Upload failed before analysis could start. Please try again.')
-
-        try {
-          setStatusMessage('Verifying upload status...')
-          const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 10000 })
-          const recovered = refresh.data.find((doc) => doc.filename === cvFile.name)
-          if (recovered) {
-            setDocs(refresh.data)
-            sessionStorage.setItem(docsCacheKey, JSON.stringify(refresh.data))
-            onSelect(recovered.id)
-            return
-          }
-        } catch {
-          // If verification fails, keep dashboard error shown for retry.
+        const status = err.response?.status
+        if (typeof detail === 'string' && detail.trim()) {
+          setError(detail)
+        } else if (status === 401) {
+          setError('Your session expired. Please sign in again, then upload your document.')
+        } else if (status === 413) {
+          setError('This file is too large for upload. Please try a smaller PDF or DOCX file.')
+        } else {
+          setError('Upload request failed and the file was not found yet. Please confirm backend/API is running, then try again.')
         }
       } else {
         setError('Unexpected upload issue. Please try again.')
@@ -127,12 +188,21 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   }
 
   const removeDocument = async (id: number) => {
-    await api.delete(`/documents/${id}`)
-    setDocs((prev) => {
-      const next = prev.filter((doc) => doc.id !== id)
-      sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
-      return next
-    })
+    try {
+      await api.delete(`/documents/${id}`)
+      setDocs((prev) => {
+        const next = prev.filter((doc) => doc.id !== id)
+        sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
+        return next
+      })
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        setError(typeof detail === 'string' ? detail : 'Unable to delete this document right now. Please try again.')
+      } else {
+        setError('Unable to delete this document right now. Please try again.')
+      }
+    }
   }
 
   return (
@@ -141,7 +211,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         <div className="absolute inset-0" style={bgStyle} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,217,255,0.16),transparent_48%)]" />
 
-        <div className="relative z-10 max-w-[1280px] mx-auto">
+        <motion.div className="relative z-10 max-w-[1280px] mx-auto" style={{ opacity: contentOpacity, filter: blurFilter }}>
           <div className="text-center mb-8">
             <motion.div className="mb-3 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
               <Brain className="text-cyan-300" size={46} />
@@ -176,7 +246,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             >
               <Upload className="inline mr-2" />
               {cvFile ? cvFile.name : 'Drop your CV here or click to browse'}
-              <input type="file" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
+              <input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
             </label>
 
             {error && <p className="text-pink-200 mb-3 text-base">{error}</p>}
@@ -203,10 +273,10 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             className={`mt-8 grid gap-4 ${docs.length === 1 ? 'grid-cols-1 max-w-[640px] mx-auto' : 'md:grid-cols-2'}`}
           >
             {docs.map((doc) => (
-              <DocumentCard key={doc.id} filename={doc.filename} date={doc.upload_date} onAnalyse={() => onSelect(doc.id)} onDelete={() => removeDocument(doc.id)} />
+              <DocumentCard key={doc.id} filename={doc.filename} date={doc.upload_date} isAnalyzed={Boolean(doc.is_analyzed)} onAnalyse={() => onSelect(doc.id)} onDelete={() => removeDocument(doc.id)} />
             ))}
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       <AppFooter />
