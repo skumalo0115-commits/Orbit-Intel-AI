@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react'
+import axios from 'axios'
 import { motion } from 'framer-motion'
 import { Brain, CircleDot, BookOpen, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -78,6 +79,7 @@ function InsightPanel({ title, icon, items, dotColor }: { title: string; icon: R
 export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
@@ -87,9 +89,19 @@ export default function AnalysisPage() {
 
     const run = async () => {
       setIsLoading(true)
+      setError(null)
       try {
         const response = await api.post<Analysis>(`/analyze/${documentId}`)
         setAnalysis(response.data)
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const detail = err.response?.data && typeof err.response.data === 'object' && 'detail' in err.response.data
+            ? (err.response.data as { detail?: unknown }).detail
+            : null
+          setError(typeof detail === 'string' ? detail : 'Failed to run analysis. Please return to dashboard and try again.')
+        } else {
+          setError('Failed to run analysis. Please return to dashboard and try again.')
+        }
       } finally {
         setIsLoading(false)
       }
@@ -134,6 +146,15 @@ export default function AnalysisPage() {
         <div className="relative z-10 max-w-[1180px] mx-auto">
           {isLoading ? (
             <AnalysisLoader />
+          ) : error ? (
+            <div className="rounded-2xl border border-pink-300/50 bg-pink-500/10 p-6 text-center">
+              <p className="text-2xl text-pink-100">{error}</p>
+              <div className="mt-5 flex justify-center">
+                <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-8 py-3 rounded-2xl text-2xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
+                  Back to Dashboard
+                </motion.button>
+              </div>
+            </div>
           ) : (
             <>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-7">

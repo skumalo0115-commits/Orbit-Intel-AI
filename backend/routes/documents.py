@@ -1,3 +1,4 @@
+import logging
 import shutil
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from backend.services.dependencies import get_current_user
 
 router = APIRouter(tags=["documents"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/upload", response_model=DocumentResponse)
@@ -34,8 +36,13 @@ def upload_document(
     with target_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    text = TextExtractor.extract(str(target_path))
-    document = Document(user_id=current_user.id, filename=file.filename, file_path=str(target_path), text=text)
+    try:
+        extracted_text = TextExtractor.extract(str(target_path))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Text extraction failed for %s", target_path)
+        extracted_text = ""
+
+    document = Document(user_id=current_user.id, filename=file.filename, file_path=str(target_path), text=extracted_text)
     db.add(document)
     db.commit()
     db.refresh(document)

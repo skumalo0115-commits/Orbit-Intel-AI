@@ -1,6 +1,7 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Brain, Sparkles, Upload } from 'lucide-react'
+import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
 import AppFooter from '../components/AppFooter'
 import api from '../services/api'
@@ -93,6 +94,28 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         return next
       })
       onSelect(response.data.id)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status
+        const detail = err.response?.data && typeof err.response.data === 'object' && 'detail' in err.response.data
+          ? (err.response.data as { detail?: unknown }).detail
+          : null
+        const detailMessage = typeof detail === 'string' ? detail : null
+
+        if (status === 401) {
+          setError('Your session has expired. Please sign out and sign in again, then retry the upload.')
+        } else if (status === 413) {
+          setError('This CV file is too large. Please upload a smaller PDF or DOCX file.')
+        } else if (detailMessage) {
+          setError(detailMessage)
+        } else if (!err.response) {
+          setError('Cannot reach the API server. Please check backend status / API URL and try again.')
+        } else {
+          setError(`Upload failed (HTTP ${status ?? 'unknown'}). Please try again.`)
+        }
+      } else {
+        setError('Upload failed unexpectedly. Please try again.')
+      }
     } finally {
       setIsUploading(false)
     }
@@ -159,7 +182,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
               whileTap={{ scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 280, damping: 20 }}
               className="w-full py-3 rounded-2xl text-lg font-semibold bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-neon disabled:opacity-65 disabled:cursor-not-allowed"
-              disabled={isUploading}
+              disabled={isUploading || !cvFile}
             >
               {isUploading ? 'Uploading CV...' : 'Analyse Career Path'}
             </motion.button>
