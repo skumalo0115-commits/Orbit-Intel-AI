@@ -61,7 +61,7 @@ api.interceptors.response.use(
     }
 
     const hasResponse = Boolean(error.response)
-    const retryableStatus = error.response?.status === 404 || error.response?.status === 502 || error.response?.status === 503
+    const retryableStatus = error.response?.status === 404 || error.response?.status === 502
     const shouldRetry = !hasResponse || retryableStatus
 
     if (!shouldRetry) {

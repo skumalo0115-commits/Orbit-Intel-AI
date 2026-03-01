@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.database.config import Settings
 from backend.database.session import Base, engine
 from backend.models import analysis, document, user  # noqa: F401
 from backend.routes.analysis import router as analysis_router
@@ -43,11 +44,16 @@ def healthcheck():
 
 @app.get("/env-check")
 def env_check():
-    required_vars = ["SECRET_KEY", "DATABASE_URL", "OPENAI_API_KEY"]
-    optional_vars = ["OPENAI_MODEL"]
+    settings = Settings()
 
-    required = {name: bool(os.getenv(name, "").strip()) for name in required_vars}
-    optional = {name: bool(os.getenv(name, "").strip()) for name in optional_vars}
+    required = {
+        "SECRET_KEY": bool((os.getenv("SECRET_KEY", "").strip() or settings.secret_key).strip()),
+        "DATABASE_URL": bool((os.getenv("DATABASE_URL", "").strip() or settings.database_url).strip()),
+        "OPENAI_API_KEY": bool((os.getenv("OPENAI_API_KEY", "").strip() or settings.openai_api_key).strip()),
+    }
+    optional = {
+        "OPENAI_MODEL": bool((os.getenv("OPENAI_MODEL", "").strip() or settings.openai_model).strip()),
+    }
 
     return {
         "ready": all(required.values()),

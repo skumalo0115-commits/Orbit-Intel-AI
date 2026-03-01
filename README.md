@@ -132,6 +132,14 @@ VITE_API_URL=http://localhost:8000
 - `OPENAI_MODEL` (optional, default `gpt-4o-mini`).
 - Use `GET /env-check` to verify required environment variables are set (returns booleans only, never secret values).
 
+### If `/analyze/{id}` returns 503
+
+1. Call `GET /env-check` and confirm `required.OPENAI_API_KEY` is `true`.
+2. Ensure your key starts with `sk-` and is active in OpenAI dashboard.
+3. Confirm billing/quota is enabled for your OpenAI project.
+4. If you set a custom model, verify `OPENAI_MODEL` is valid (default: `gpt-4o-mini`).
+5. Restart backend locally or redeploy on Railway after any env variable change.
+
 ---
 
 ## 📌 Product Goal

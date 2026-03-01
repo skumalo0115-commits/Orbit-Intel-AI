@@ -2,14 +2,27 @@ from typing import Any
 import json
 import os
 import re
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+
+from backend.database.config import Settings
 
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
 
     def __init__(self) -> None:
+        settings = Settings()
+        self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or os.getenv("openai_api_key", "").strip()
+        self.openai_model = os.getenv("OPENAI_MODEL", "").strip() or os.getenv("openai_model", "").strip() or "gpt-4o-mini"
+        if not self.openai_api_key:
+            self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or ""
+        if not self.openai_api_key:
+            self.openai_api_key = getattr(settings, "openai_api_key", "") or ""
+        if not self.openai_model:
+            self.openai_model = getattr(settings, "openai_model", "") or "gpt-4o-mini"
+
         self.fast_mode = os.getenv("AI_FAST_MODE", "1").lower() not in {"0", "false", "no"}
 
         self.profile_map: dict[str, list[str]] = {
@@ -65,8 +78,8 @@ class AIPipeline:
         context = profile_context or {}
         research = self._research_target_role(context)
 
-        if not os.getenv("OPENAI_API_KEY", "").strip():
-            raise RuntimeError("OPENAI_API_KEY is required. Analysis page is configured to use ChatGPT for all results.")
+        if not self.openai_api_key.strip():
+            raise RuntimeError("OPENAI_API_KEY is missing. Add it to backend/.env (local) or Railway variables, then restart/redeploy.")
 
         ai_analysis = self._generate_openai_analysis(trimmed, context, research)
         if not ai_analysis:
@@ -331,12 +344,12 @@ class AIPipeline:
         cv_text: str,
         profile_context: dict[str, str],
         research: dict[str, Any] | None,
-    ) -> dict[str, Any] | None:
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    ) -> dict[str, Any]:
+        api_key = self.openai_api_key.strip()
         if not api_key:
-            return None
+            raise RuntimeError("OPENAI_API_KEY is missing. Add it in backend/.env or Railway variables, then restart/redeploy.")
 
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        model = self.openai_model
         target_title = (profile_context.get("target_job_title") or "").strip()
         target_desc = (profile_context.get("target_job_description") or "").strip()
         skills = (profile_context.get("skills") or "").strip()
@@ -347,7 +360,7 @@ class AIPipeline:
             "JSON schema: "
             "{"
             '"classification": string,'
-            '"summary": string (bullet list with newline separators, each line starts with '- '),' 
+            '"summary": string (bullet list with newline separators, each line starts with '- '),'
             '"target_alignment": string,'
             '"cv_strengths_for_target": string[],'
             '"cv_gaps_for_target": string[],'
@@ -371,6 +384,7 @@ class AIPipeline:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.1,
+            "response_format": {"type": "json_object"},
         }
 
         request = Request(
@@ -384,57 +398,76 @@ class AIPipeline:
         )
 
         try:
-            with urlopen(request, timeout=25) as response:  # noqa: S310
+            with urlopen(request, timeout=35) as response:  # noqa: S310
                 result = json.loads(response.read().decode("utf-8"))
-            content = (
-                result.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-                .strip()
-            )
-            parsed = self._extract_json_object(content)
-            if not parsed:
-                return None
+        except HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="ignore")
+            try:
+                details = json.loads(body)
+                message = str(details.get("error", {}).get("message") or "").strip()
+            except Exception:
+                message = ""
 
-            scores = parsed.get("profession_scores") or []
-            cleaned_scores: list[dict[str, Any]] = []
-            for item in scores[:3]:
-                if not isinstance(item, dict):
-                    continue
-                name = str(item.get("name") or "").strip()
-                reason = str(item.get("reason") or "").strip()
-                raw_score = item.get("score", 0)
-                try:
-                    numeric = int(float(raw_score))
-                except Exception:
-                    numeric = 0
-                numeric = max(0, min(100, numeric))
-                if name:
-                    cleaned_scores.append({"name": name, "score": numeric, "reason": reason or "CV-to-role match generated from AI analysis."})
+            status_code = getattr(exc, "code", 0)
+            if status_code == 401:
+                raise RuntimeError("OpenAI rejected the API key (401). Create a new valid key and set OPENAI_API_KEY.") from exc
+            if status_code == 429:
+                raise RuntimeError("OpenAI quota/rate-limit reached (429). Check billing/usage and retry in a minute.") from exc
+            if status_code == 400 and "model" in message.lower():
+                raise RuntimeError(f"OpenAI model error: {message}. Set OPENAI_MODEL to a valid model (example: gpt-4o-mini).") from exc
+            raise RuntimeError(f"OpenAI request failed ({status_code}). {message or 'Check API key, model, and billing.'}") from exc
+        except URLError as exc:
+            raise RuntimeError("Network error while calling OpenAI. Check internet access/firewall and retry.") from exc
+        except Exception as exc:
+            raise RuntimeError("Unexpected error while contacting OpenAI. Check backend logs and retry.") from exc
 
-            summary = str(parsed.get("summary") or "").strip()
-            if summary:
-                lines = [line.strip() for line in summary.splitlines() if line.strip()]
-                summary = "\n".join(line if line.startswith("- ") else f"- {line.lstrip('- ').strip()}" for line in lines)
+        content = (
+            result.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+        parsed = self._extract_json_object(content)
+        if not parsed:
+            raise RuntimeError("ChatGPT returned an invalid JSON format. Please retry.")
 
-            output = {
-                "classification": str(parsed.get("classification") or "CV"),
-                "summary": summary,
-                "target_alignment": str(parsed.get("target_alignment") or ""),
-                "cv_strengths_for_target": [str(x).strip() for x in (parsed.get("cv_strengths_for_target") or []) if str(x).strip()][:6],
-                "cv_gaps_for_target": [str(x).strip() for x in (parsed.get("cv_gaps_for_target") or []) if str(x).strip()][:6],
-                "transferable_strengths": [str(x).strip() for x in (parsed.get("transferable_strengths") or []) if str(x).strip()][:6],
-                "missing_for_top": [str(x).strip() for x in (parsed.get("missing_for_top") or []) if str(x).strip()][:6],
-                "recommended_professions": [str(x).strip() for x in (parsed.get("recommended_professions") or []) if str(x).strip()][:3],
-                "profession_scores": cleaned_scores,
-            }
+        scores = parsed.get("profession_scores") or []
+        cleaned_scores: list[dict[str, Any]] = []
+        for item in scores[:3]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            reason = str(item.get("reason") or "").strip()
+            raw_score = item.get("score", 0)
+            try:
+                numeric = int(float(raw_score))
+            except Exception:
+                numeric = 0
+            numeric = max(0, min(100, numeric))
+            if name:
+                cleaned_scores.append({"name": name, "score": numeric, "reason": reason or "CV-to-role match generated from AI analysis."})
 
-            if not output["profession_scores"] or not output["recommended_professions"] or not output["summary"]:
-                return None
+        summary = str(parsed.get("summary") or "").strip()
+        if summary:
+            lines = [line.strip() for line in summary.splitlines() if line.strip()]
+            summary = "\n".join(line if line.startswith("- ") else f"- {line.lstrip('- ').strip()}" for line in lines)
 
-            return output
-        except Exception:
-            return None
+        output = {
+            "classification": str(parsed.get("classification") or "CV"),
+            "summary": summary,
+            "target_alignment": str(parsed.get("target_alignment") or ""),
+            "cv_strengths_for_target": [str(x).strip() for x in (parsed.get("cv_strengths_for_target") or []) if str(x).strip()][:6],
+            "cv_gaps_for_target": [str(x).strip() for x in (parsed.get("cv_gaps_for_target") or []) if str(x).strip()][:6],
+            "transferable_strengths": [str(x).strip() for x in (parsed.get("transferable_strengths") or []) if str(x).strip()][:6],
+            "missing_for_top": [str(x).strip() for x in (parsed.get("missing_for_top") or []) if str(x).strip()][:6],
+            "recommended_professions": [str(x).strip() for x in (parsed.get("recommended_professions") or []) if str(x).strip()][:3],
+            "profession_scores": cleaned_scores,
+        }
+
+        if not output["profession_scores"] or not output["recommended_professions"] or not output["summary"]:
+            raise RuntimeError("ChatGPT response missed required fields. Please retry.")
+
+        return output
 
 
     def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str], research: dict[str, Any] | None = None) -> str:
