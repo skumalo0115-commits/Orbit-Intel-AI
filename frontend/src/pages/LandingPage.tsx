@@ -46,7 +46,7 @@ function MiniFeatureCard({ icon, title, description, delay }: MiniCardProps) {
   const Icon = icon === 'analysis' ? Sparkles : icon === 'precision' ? Crosshair : TrendingUp
   const color = icon === 'analysis' ? '#FACC15' : icon === 'precision' ? '#A855F7' : '#10B981'
   return (
-    <motion.div initial={{ opacity: 0, y: 36 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.45, delay }} whileHover={{ y: -5, scale: 1.01 }} className="rounded-2xl border border-white/20 bg-white/[0.03] backdrop-blur-xl p-5 min-h-[170px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+    <motion.div initial={{ opacity: 0, y: 36 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.35 }} transition={{ duration: 0.45, delay }} whileHover={{ y: -5, scale: 1.01 }} className="rounded-2xl border border-white/20 bg-white/[0.03] backdrop-blur-xl p-5 min-h-[170px] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
       <Icon size={28} style={{ color }} className="mb-3" />
       <h3 className="text-2xl font-semibold mb-2">{title}</h3>
       <p className="text-[#bfc7d6] text-base leading-relaxed">{description}</p>
@@ -61,7 +61,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
       initial={{ opacity: 0, y: 36, scale: 0.985 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       whileHover={{ y: -8, scale: 1.015 }}
-      viewport={{ once: true, amount: 0.25 }}
+      viewport={{ once: false, amount: 0.25 }}
       transition={{ duration: 0.45, delay }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
@@ -77,8 +77,8 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
       <div className="absolute inset-0" style={{ background: tint }} />
       <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
       <div className="absolute bottom-4 left-5 z-10">
-        <motion.h3 initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.8 }} transition={{ duration: 0.28, delay: delay + 0.06 }} className="text-3xl md:text-4xl font-semibold">{title}</motion.h3>
-        <motion.p initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.8 }} transition={{ duration: 0.28, delay: delay + 0.1 }} className="text-[#d7deea] text-lg md:text-xl mt-1">{description}</motion.p>
+        <motion.h3 initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.8 }} transition={{ duration: 0.28, delay: delay + 0.06 }} className="text-3xl md:text-4xl font-semibold">{title}</motion.h3>
+        <motion.p initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.8 }} transition={{ duration: 0.28, delay: delay + 0.1 }} className="text-[#d7deea] text-lg md:text-xl mt-1">{description}</motion.p>
       </div>
     </motion.article>
   )
@@ -87,7 +87,7 @@ function CareerPathCard({ title, description, image, tint, delay }: CareerCardPr
 function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
   const Icon = icon === 'share' ? WandSparkles : icon === 'analysis' ? Brain : Zap
   return (
-    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -4, scale: 1.01 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.42, delay }} className="group rounded-2xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.14),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-5 md:p-6 flex items-center gap-4 shadow-[0_8px_24px_rgba(0,0,0,0.38)]">
+    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -4, scale: 1.01 }} viewport={{ once: false, amount: 0.35 }} transition={{ duration: 0.42, delay }} className="group rounded-2xl border border-white/20 bg-[linear-gradient(130deg,rgba(124,58,237,0.14),rgba(0,0,0,0.55),rgba(0,217,255,0.12))] p-5 md:p-6 flex items-center gap-4 shadow-[0_8px_24px_rgba(0,0,0,0.38)]">
       <div className="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-500 to-cyan-400 text-white shrink-0 group-hover:scale-110 transition"><Icon size={24} /></div>
       <div>
         <h3 className="text-2xl md:text-3xl font-semibold mb-1">{title}</h3>
@@ -100,7 +100,7 @@ function HowItWorksCard({ title, description, delay, icon }: HowCardProps) {
 function FinalLaunchCard({ onEnter }: { onEnter: () => void }) {
   const [mouse, setMouse] = useState({ x: 50, y: 50 })
   return (
-    <motion.div initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -6, scale: 1.012 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.45 }} onMouseMove={(e) => {
+    <motion.div initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -6, scale: 1.012 }} viewport={{ once: false, amount: 0.35 }} transition={{ duration: 0.45 }} onMouseMove={(e) => {
       const rect = e.currentTarget.getBoundingClientRect()
       setMouse({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 })
     }} className="relative overflow-hidden rounded-2xl border border-white/20 p-7 md:p-8 text-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]" style={{ backgroundImage: `radial-gradient(circle at ${mouse.x}% ${mouse.y}%, rgba(0,217,255,0.18), transparent 38%), linear-gradient(130deg, rgba(124,58,237,0.18), rgba(0,0,0,0.6), rgba(0,217,255,0.14))` }}>
@@ -130,7 +130,7 @@ function LandingFooter() {
       <div className="max-w-[1280px] mx-auto px-8 lg:px-12 py-12">
         <div className="grid md:grid-cols-[1.3fr_1fr_1fr] gap-10">
           <div>
-            <div className="flex items-center gap-3 mb-4"><Brain className="text-violet-400" /><h4 className="text-3xl font-semibold bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">AI Career System</h4></div>
+            <div className="flex items-center gap-3 mb-4"><Brain className="text-violet-400" /><h4 className="text-3xl font-semibold bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">Orbit Intel-AI</h4></div>
             <p className="text-[#aab3c2] text-lg max-w-md">Empowering your future with intelligent career guidance powered by advanced AI technology.</p>
             <div className="flex flex-wrap gap-3 mt-5">
               <a aria-label="GitHub" href="https://github.com/skumalo0115-commits" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-violet-600/25 border border-violet-400/40 flex items-center justify-center hover:scale-110 hover:shadow-neon transition"><Github /></a>
@@ -158,7 +158,7 @@ function LandingFooter() {
           </form>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/10 text-center text-[#97a3b7] text-lg">© 2026 AI Career System. All rights reserved.</div>
+        <div className="mt-8 pt-6 border-t border-white/10 text-center text-[#97a3b7] text-lg">© 2026 Orbit Intel-AI. All rights reserved.</div>
       </div>
     </footer>
   )
@@ -212,7 +212,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
       </section>
 
       <section className="relative px-8 lg:px-12 pb-14 pt-10 max-w-[1280px] mx-auto">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.6 }} className="text-center mb-8">
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} transition={{ duration: 0.6 }} className="text-center mb-8">
           <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-violet-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent">Powered by Intelligence</h2>
           <p className="text-[#C5CFDD] text-xl mt-3">Next-generation career guidance at your fingertips</p>
         </motion.div>
@@ -224,7 +224,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
       </section>
 
       <section className="relative px-8 lg:px-12 pb-16 pt-6 max-w-[1280px] mx-auto">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.6 }} className="text-center mb-8">
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.35 }} transition={{ duration: 0.6 }} className="text-center mb-8">
           <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">Explore Career Paths</h2>
           <p className="text-[#C5CFDD] text-xl mt-3">Discover opportunities across diverse industries</p>
         </motion.div>
@@ -237,7 +237,7 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial }
       </section>
 
       <section className="relative px-8 lg:px-12 pb-16 pt-6 max-w-[1280px] mx-auto">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.6 }} className="text-center mb-8">
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.35 }} transition={{ duration: 0.6 }} className="text-center mb-8">
           <h2 className="font-['Space_Grotesk'] text-5xl md:text-6xl font-bold tracking-[-0.02em] bg-gradient-to-r from-pink-400 via-violet-300 to-cyan-300 bg-clip-text text-transparent">How It Works</h2>
           <p className="text-[#C5CFDD] text-xl mt-3">Three simple steps to your dream career</p>
         </motion.div>
