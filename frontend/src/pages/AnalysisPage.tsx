@@ -70,7 +70,7 @@ function MatchCard({ name, score, reason, delay }: { name: string; score: number
   }, [score, delay])
 
   return (
-    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -6, scale: 1.02, boxShadow: '0 18px 36px rgba(124,58,237,0.25)' }} transition={{ duration: 0.4, delay: delay * 0.08 }} className="rounded-2xl border border-white/20 p-3.5 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7))] backdrop-blur-xl">
+    <motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} whileHover={{ y: -6, scale: 1.02, boxShadow: '0 18px 36px rgba(124,58,237,0.25)' }} transition={{ duration: 0.4, delay: delay * 0.08 }} className="rounded-2xl border border-white/20 p-3.5 bg-[linear-gradient(160deg,rgba(147,51,234,0.15),rgba(15,23,42,0.7)) ]">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h3 className="text-2xl font-semibold">{name}</h3>
         <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 font-bold text-lg">{score}%</span>
@@ -187,6 +187,13 @@ export default function AnalysisPage() {
                 Back to Dashboard
               </motion.button>
             </div>
+          ) : !analysis ? (
+            <div className="min-h-[52vh] flex flex-col items-center justify-center text-center">
+              <p className="text-xl text-pink-200 mb-5 max-w-2xl">Analysis data is unavailable right now. Please return to dashboard and try again.</p>
+              <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} onClick={() => navigate('/dashboard')} className="px-7 py-2.5 rounded-2xl text-lg md:text-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_35px_rgba(124,58,237,0.55)]">
+                Back to Dashboard
+              </motion.button>
+            </div>
           ) : (
             <>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.4 }} className="text-center mb-7">
@@ -208,7 +215,7 @@ export default function AnalysisPage() {
                 ))}
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.16),rgba(15,23,42,0.7))] backdrop-blur-xl">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.16),rgba(15,23,42,0.7)) ]">
                 <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
                 <p className="text-base text-[#d7deea] leading-relaxed min-h-[120px]">{typedSummary}</p>
                 <p className="text-lg text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
