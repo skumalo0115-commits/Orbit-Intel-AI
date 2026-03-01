@@ -26,7 +26,7 @@ class AIPipeline:
         return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
     def analyze(self, text: str) -> dict[str, Any]:
-        trimmed = (text or "")[:4000]
+        trimmed = (text or "")[:3000]
         if not trimmed.strip():
             return {
                 "summary": "No readable text detected.",
@@ -40,6 +40,7 @@ class AIPipeline:
                     "recommended_professions": [],
                     "improvement_areas": [],
                     "strengths": [],
+                    "profession_scores": [],
                 },
             }
 
@@ -57,6 +58,7 @@ class AIPipeline:
             "recommended_professions": career["recommended_professions"],
             "improvement_areas": career["improvement_areas"],
             "strengths": career["strengths"],
+            "profession_scores": career["profession_scores"],
         }
         return {
             "summary": summary,
@@ -68,7 +70,7 @@ class AIPipeline:
 
     def _summarize(self, text: str) -> str:
         try:
-            out = self.summarizer(text, max_length=150, min_length=40, do_sample=False)
+            out = self.summarizer(text, max_length=130, min_length=40, do_sample=False)
             return out[0]["summary_text"]
         except Exception:
             return " ".join(text.split()[:120])
@@ -81,15 +83,15 @@ class AIPipeline:
             content = text.lower()
             if "invoice" in content:
                 return "Invoice"
+            if "agreement" in content or "contract" in content:
+                return "Contract"
+            if "financial" in content or "balance" in content:
+                return "Financial document"
             if "curriculum" in content or "resume" in content or "cv" in content:
                 return "CV"
             cv_signals = ["education", "experience", "skills", "projects", "objective", "linkedin", "certification"]
             if sum(1 for signal in cv_signals if signal in content) >= 2:
                 return "CV"
-            if "agreement" in content or "contract" in content:
-                return "Contract"
-            if "financial" in content or "balance" in content:
-                return "Financial document"
             return "Unknown"
 
     def _entities(self, text: str) -> list[dict[str, Any]]:
@@ -108,36 +110,51 @@ class AIPipeline:
         except Exception:
             return []
 
-    def _career_insights(self, text: str, entities: list[dict[str, Any]]) -> dict[str, list[str]]:
+    def _career_insights(self, text: str, entities: list[dict[str, Any]]) -> dict[str, Any]:
         content = text.lower()
         profile_map = {
-            "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git"],
+            "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++"],
             "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting"],
             "Data Scientist": ["machine learning", "tensorflow", "pytorch", "statistics", "pandas"],
-            "Cloud Engineer": ["aws", "azure", "gcp", "docker", "kubernetes", "devops"],
-            "Product Manager": ["product", "roadmap", "stakeholder", "strategy", "agile"],
+            "Electrical Engineer": ["electrical", "circuit", "power systems", "autocad", "plc", "renewable"],
+            "Mechanical Engineer": ["mechanical", "cad", "solidworks", "manufacturing", "thermodynamics"],
+            "Civil Engineer": ["civil", "structural", "construction", "survey", "autocad", "infrastructure"],
+            "Project Manager": ["project management", "pmp", "scrum", "stakeholder", "risk management"],
+            "Marketing Specialist": ["marketing", "seo", "campaign", "branding", "social media"],
+            "Financial Analyst": ["finance", "accounting", "budget", "forecast", "valuation"],
+            "Healthcare Professional": ["patient", "clinical", "healthcare", "nursing", "medical"],
+            "Teacher / Educator": ["teaching", "curriculum", "classroom", "education", "assessment"],
+            "Operations Specialist": ["operations", "supply chain", "logistics", "process improvement"],
         }
 
-        detected_skills = sorted(
-            {
-                skill
-                for skills in profile_map.values()
-                for skill in skills
-                if skill in content
-            }
-        )
+        detected_skills = sorted({skill for skills in profile_map.values() for skill in skills if skill in content})
 
-        scored_profiles: list[tuple[str, int]] = []
+        scored_profiles: list[tuple[str, int, list[str]]] = []
         for profile, skills in profile_map.items():
-            score = sum(1 for skill in skills if skill in content)
-            if score > 0:
-                scored_profiles.append((profile, score))
+            matched = [skill for skill in skills if skill in content]
+            if matched:
+                scored_profiles.append((profile, len(matched), matched))
 
         scored_profiles.sort(key=lambda pair: pair[1], reverse=True)
-        recommended_professions = [name for name, _ in scored_profiles[:3]]
 
-        if not recommended_professions:
-            recommended_professions = ["General Technology Role"]
+        if not scored_profiles:
+            profession_scores = [{"name": "General Professional Role", "score": 60, "reason": "Insufficient explicit domain signals in CV text."}]
+            recommended_professions = ["General Professional Role"]
+        else:
+            max_score = max(score for _, score, _ in scored_profiles)
+            top = scored_profiles[:3]
+            profession_scores = []
+            for name, score, matched in top:
+                pct = int(65 + ((score / max_score) * 30)) if max_score > 0 else 65
+                pct = max(60, min(98, pct))
+                profession_scores.append(
+                    {
+                        "name": name,
+                        "score": pct,
+                        "reason": f"Matched signals: {', '.join(matched[:4])}",
+                    }
+                )
+            recommended_professions = [item["name"] for item in profession_scores]
 
         top_profile = recommended_professions[0]
         required_for_top = profile_map.get(top_profile, [])
@@ -152,6 +169,7 @@ class AIPipeline:
             improvement_areas = [
                 "Add measurable project outcomes to the CV",
                 "Include certifications or proof of practical experience",
+                "Highlight role-specific tools and responsibilities",
             ]
 
         return {
@@ -159,6 +177,7 @@ class AIPipeline:
             "recommended_professions": recommended_professions,
             "improvement_areas": improvement_areas,
             "strengths": strengths,
+            "profession_scores": profession_scores,
         }
 
 

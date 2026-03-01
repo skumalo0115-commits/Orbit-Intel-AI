@@ -34,13 +34,23 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const title = useTypingText('AI Career Intelligence System')
+  const docsCacheKey = 'dashboard_docs_cache'
 
   const loadDocuments = async () => {
     const response = await api.get<DocumentItem[]>('/documents')
     setDocs(response.data)
+    sessionStorage.setItem(docsCacheKey, JSON.stringify(response.data))
   }
 
   useEffect(() => {
+    const cached = sessionStorage.getItem(docsCacheKey)
+    if (cached) {
+      try {
+        setDocs(JSON.parse(cached) as DocumentItem[])
+      } catch {
+        sessionStorage.removeItem(docsCacheKey)
+      }
+    }
     loadDocuments()
   }, [])
 
@@ -77,7 +87,11 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       formData.append('file', cvFile)
       const response = await api.post<DocumentItem>('/upload', formData)
       setCvFile(null)
-      await loadDocuments()
+      setDocs((prev) => {
+        const next = [response.data, ...prev.filter((item) => item.id !== response.data.id)]
+        sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
+        return next
+      })
       onSelect(response.data.id)
     } finally {
       setIsUploading(false)
@@ -86,7 +100,11 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
 
   const removeDocument = async (id: number) => {
     await api.delete(`/documents/${id}`)
-    setDocs((prev) => prev.filter((doc) => doc.id !== id))
+    setDocs((prev) => {
+      const next = prev.filter((doc) => doc.id !== id)
+      sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
+      return next
+    })
   }
 
   return (
