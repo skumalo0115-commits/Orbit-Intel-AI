@@ -91,8 +91,24 @@ export default function AnalysisPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await api.post<Analysis>(`/analyze/${documentId}`, undefined, { timeout: 300000 })
-        setAnalysis(response.data)
+        let lastError: unknown = null
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const response = await api.post<Analysis>(`/analyze/${documentId}`, undefined, { timeout: 300000 })
+            setAnalysis(response.data)
+            lastError = null
+            break
+          } catch (innerErr) {
+            lastError = innerErr
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)))
+            }
+          }
+        }
+
+        if (lastError) {
+          throw lastError
+        }
       } catch (err) {
         if (axios.isAxiosError(err)) {
           const detail = err.response?.data?.detail

@@ -14,6 +14,8 @@ interface DocumentItem {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const uploadableExtensions = ['.pdf', '.docx', '.png', '.jpg', '.jpeg']
+
 function useTypingText(text: string, speed = 45) {
   const [value, setValue] = useState('')
   useEffect(() => {
@@ -96,9 +98,9 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const recoverUploadedDocument = async (filename: string, existingDocIds: Set<number>) => {
     setStatusMessage('Finalising upload...')
 
-    for (let attempt = 0; attempt < 4; attempt += 1) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
-        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 20000 })
+        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 60000 })
         const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
         const recoveredByName = latestDocs.find((doc) => doc.filename === filename)
         const recoveredByNewId = latestDocs.find((doc) => !existingDocIds.has(doc.id))
@@ -115,7 +117,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         // Keep retrying below.
       }
 
-      await sleep(900 * (attempt + 1))
+      await sleep(Math.min(2500 * (attempt + 1), 12000))
     }
 
     return false
@@ -127,6 +129,12 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
       return
     }
 
+    const extension = `.${cvFile.name.split('.').pop()?.toLowerCase() ?? ''}`
+    if (!uploadableExtensions.includes(extension)) {
+      setError('Please upload a PDF, DOCX, JPG, JPEG, or PNG file.')
+      return
+    }
+
     const existingDocIds = new Set(docs.map((doc) => doc.id))
 
     setError(null)
@@ -135,10 +143,10 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     try {
       const formData = new FormData()
       formData.append('file', cvFile)
-      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 180000 })
+      const response = await api.post<DocumentItem>('/upload', formData, { timeout: 600000 })
       const uploadedDocument = response.data
 
-      setStatusMessage('Opening analysis...')
+      setStatusMessage('Uploading complete. Starting analysis...')
       setCvFile(null)
       setDocs((prev) => {
         const next = [uploadedDocument, ...prev.filter((item) => item.id !== uploadedDocument.id)]
@@ -160,7 +168,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         } else if (status === 413) {
           setError('This file is too large for upload. Please try a smaller PDF or DOCX file.')
         } else {
-          setError('Upload request failed, but we could not find the saved document yet. Please try again.')
+          setError('Upload request failed and the file was not found yet. Please confirm backend/API is running, then try again.')
         }
       } else {
         setError('Unexpected upload issue. Please try again.')
@@ -230,7 +238,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             >
               <Upload className="inline mr-2" />
               {cvFile ? cvFile.name : 'Drop your CV here or click to browse'}
-              <input type="file" accept=".pdf,.doc,.docx,.txt,.csv,.rtf,.png,.jpg,.jpeg" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
+              <input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" className="hidden" onChange={(e) => { setCvFile(e.target.files?.[0] ?? null); setError(null); setStatusMessage(null) }} />
             </label>
 
             {error && <p className="text-pink-200 mb-3 text-base">{error}</p>}
