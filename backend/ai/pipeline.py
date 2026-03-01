@@ -1,5 +1,7 @@
 from functools import cached_property
 from typing import Any
+import os
+import re
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -8,6 +10,9 @@ from transformers import pipeline
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
+
+    def __init__(self) -> None:
+        self.fast_mode = os.getenv("AI_FAST_MODE", "1").lower() not in {"0", "false", "no"}
 
     @cached_property
     def classifier(self):
@@ -69,6 +74,12 @@ class AIPipeline:
         }
 
     def _summarize(self, text: str) -> str:
+        if self.fast_mode:
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            if lines:
+                return " ".join(lines[:4])[:700]
+            return " ".join(text.split()[:120])
+
         try:
             out = self.summarizer(text, max_length=130, min_length=40, do_sample=False)
             return out[0]["summary_text"]
@@ -76,11 +87,26 @@ class AIPipeline:
             return " ".join(text.split()[:120])
 
     def _classify(self, text: str) -> str:
+        content = text.lower()
+
+        if self.fast_mode:
+            if "invoice" in content:
+                return "Invoice"
+            if "agreement" in content or "contract" in content:
+                return "Contract"
+            if "financial" in content or "balance" in content:
+                return "Financial document"
+            if "curriculum" in content or "resume" in content or "cv" in content:
+                return "CV"
+            cv_signals = ["education", "experience", "skills", "projects", "objective", "linkedin", "certification"]
+            if sum(1 for signal in cv_signals if signal in content) >= 2:
+                return "CV"
+            return "Unknown"
+
         try:
             out = self.classifier(text, self.labels)
             return out["labels"][0]
         except Exception:
-            content = text.lower()
             if "invoice" in content:
                 return "Invoice"
             if "agreement" in content or "contract" in content:
@@ -95,6 +121,20 @@ class AIPipeline:
             return "Unknown"
 
     def _entities(self, text: str) -> list[dict[str, Any]]:
+        if self.fast_mode:
+            entities: list[dict[str, Any]] = []
+            email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+            phone_match = re.search(r"\+?\d[\d\s\-()]{7,}\d", text)
+            linkedin_match = re.search(r"linkedin\.com/[^\s]+", text, re.IGNORECASE)
+            for matched, entity_type in (
+                (email_match.group(0) if email_match else None, "EMAIL"),
+                (phone_match.group(0) if phone_match else None, "PHONE"),
+                (linkedin_match.group(0) if linkedin_match else None, "LINK"),
+            ):
+                if matched:
+                    entities.append({"text": matched, "type": entity_type, "score": 0.95})
+            return entities
+
         try:
             return [
                 {"text": e["word"], "type": e["entity_group"], "score": float(e["score"])}
@@ -104,6 +144,9 @@ class AIPipeline:
             return []
 
     def _embedding(self, text: str) -> list[float]:
+        if self.fast_mode:
+            return []
+
         try:
             vector = self.embedder.encode(text)
             return np.asarray(vector).astype(float).tolist()

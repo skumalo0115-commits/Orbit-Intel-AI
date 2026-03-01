@@ -92,7 +92,7 @@ export default function AnalysisPage() {
       setError(null)
       try {
         let lastError: unknown = null
-        for (let attempt = 0; attempt < 3; attempt += 1) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const response = await api.post<Analysis>(`/analyze/${documentId}`, undefined, { timeout: 300000 })
             setAnalysis(response.data)
@@ -100,8 +100,8 @@ export default function AnalysisPage() {
             break
           } catch (innerErr) {
             lastError = innerErr
-            if (attempt < 2) {
-              await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)))
+            if (attempt < 1) {
+              await new Promise((resolve) => setTimeout(resolve, 600))
             }
           }
         }
