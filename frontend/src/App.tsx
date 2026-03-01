@@ -90,7 +90,7 @@ export default function App() {
           <Routes>
             <Route
               path="/"
-              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} />}
+              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : setShowAuthModal(true))} isAuthenticated={isAuthenticated} profileInitial={profileInitial} onSignOut={signOut} />}
             />
             <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" /> : <div className="min-h-screen flex items-center justify-center p-6"><AuthCard onAuthenticated={authRefresh} /></div>} />
             <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />

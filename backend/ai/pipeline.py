@@ -1,5 +1,7 @@
 from functools import cached_property
 from typing import Any
+import os
+import re
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -8,6 +10,9 @@ from transformers import pipeline
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
+
+    def __init__(self) -> None:
+        self.fast_mode = os.getenv("AI_FAST_MODE", "1").lower() not in {"0", "false", "no"}
 
     @cached_property
     def classifier(self):
@@ -44,20 +49,18 @@ class AIPipeline:
                 },
             }
 
-        summary = self._summarize(trimmed)
+        summary_seed = self._summarize(trimmed)
         classification = self._classify(trimmed)
         entities = self._entities(trimmed)
-        embedding = self._embedding(summary or trimmed)
         career = self._career_insights(trimmed, entities)
+        summary = self._compose_career_summary(summary_seed, career)
+        embedding = self._embedding(summary or trimmed)
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
-            "detected_skills": career["detected_skills"],
             "recommended_professions": career["recommended_professions"],
-            "improvement_areas": career["improvement_areas"],
-            "strengths": career["strengths"],
             "profession_scores": career["profession_scores"],
         }
         return {
@@ -69,6 +72,12 @@ class AIPipeline:
         }
 
     def _summarize(self, text: str) -> str:
+        if self.fast_mode:
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            if lines:
+                return " ".join(lines[:4])[:700]
+            return " ".join(text.split()[:120])
+
         try:
             out = self.summarizer(text, max_length=130, min_length=40, do_sample=False)
             return out[0]["summary_text"]
@@ -76,11 +85,26 @@ class AIPipeline:
             return " ".join(text.split()[:120])
 
     def _classify(self, text: str) -> str:
+        content = text.lower()
+
+        if self.fast_mode:
+            if "invoice" in content:
+                return "Invoice"
+            if "agreement" in content or "contract" in content:
+                return "Contract"
+            if "financial" in content or "balance" in content:
+                return "Financial document"
+            if "curriculum" in content or "resume" in content or "cv" in content:
+                return "CV"
+            cv_signals = ["education", "experience", "skills", "projects", "objective", "linkedin", "certification"]
+            if sum(1 for signal in cv_signals if signal in content) >= 2:
+                return "CV"
+            return "Unknown"
+
         try:
             out = self.classifier(text, self.labels)
             return out["labels"][0]
         except Exception:
-            content = text.lower()
             if "invoice" in content:
                 return "Invoice"
             if "agreement" in content or "contract" in content:
@@ -95,6 +119,20 @@ class AIPipeline:
             return "Unknown"
 
     def _entities(self, text: str) -> list[dict[str, Any]]:
+        if self.fast_mode:
+            entities: list[dict[str, Any]] = []
+            email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+            phone_match = re.search(r"\+?\d[\d\s\-()]{7,}\d", text)
+            linkedin_match = re.search(r"linkedin\.com/[^\s]+", text, re.IGNORECASE)
+            for matched, entity_type in (
+                (email_match.group(0) if email_match else None, "EMAIL"),
+                (phone_match.group(0) if phone_match else None, "PHONE"),
+                (linkedin_match.group(0) if linkedin_match else None, "LINK"),
+            ):
+                if matched:
+                    entities.append({"text": matched, "type": entity_type, "score": 0.95})
+            return entities
+
         try:
             return [
                 {"text": e["word"], "type": e["entity_group"], "score": float(e["score"])}
@@ -104,6 +142,9 @@ class AIPipeline:
             return []
 
     def _embedding(self, text: str) -> list[float]:
+        if self.fast_mode:
+            return []
+
         try:
             vector = self.embedder.encode(text)
             return np.asarray(vector).astype(float).tolist()
@@ -160,25 +201,31 @@ class AIPipeline:
         required_for_top = profile_map.get(top_profile, [])
         missing_for_top = [skill for skill in required_for_top if skill not in detected_skills][:4]
 
-        strengths = detected_skills[:6]
-        if not strengths:
-            strengths = [entity.get("text", "") for entity in entities[:4] if entity.get("text")]
-
-        improvement_areas = [f"Build evidence of {skill.title()}" for skill in missing_for_top]
-        if not improvement_areas:
-            improvement_areas = [
-                "Add measurable project outcomes to the CV",
-                "Include certifications or proof of practical experience",
-                "Highlight role-specific tools and responsibilities",
-            ]
-
         return {
-            "detected_skills": detected_skills,
             "recommended_professions": recommended_professions,
-            "improvement_areas": improvement_areas,
-            "strengths": strengths,
             "profession_scores": profession_scores,
+            "missing_for_top": missing_for_top,
+            "detected_skills": detected_skills[:6],
         }
+
+    def _compose_career_summary(self, base_summary: str, career: dict[str, Any]) -> str:
+        top_roles = career.get("recommended_professions", [])[:2]
+        missing = career.get("missing_for_top", [])[:3]
+        detected = career.get("detected_skills", [])[:4]
+
+        role_sentence = f"Top-fit career direction: {', '.join(top_roles)}." if top_roles else "Top-fit career direction: General Professional Role."
+        strengths_sentence = (
+            f"Strong signals from your CV include: {', '.join(detected)}."
+            if detected
+            else "Your CV shows foundational potential that can be strengthened with clearer technical outcomes."
+        )
+        improve_sentence = (
+            f"To improve your match quality, focus next on: {', '.join(missing)}."
+            if missing
+            else "To improve your profile, add measurable project outcomes, practical certifications, and role-specific tools."
+        )
+
+        return f"{base_summary} {role_sentence} {strengths_sentence} {improve_sentence}".strip()
 
 
 ai_pipeline = AIPipeline()

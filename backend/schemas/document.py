@@ -8,6 +8,7 @@ class DocumentResponse(BaseModel):
     id: int
     filename: str
     upload_date: datetime
+    is_analyzed: bool = False
 
     class Config:
         from_attributes = True
