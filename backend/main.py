@@ -50,10 +50,7 @@ def env_check():
         "SECRET_KEY": bool((os.getenv("SECRET_KEY", "").strip() or settings.secret_key).strip()),
         "DATABASE_URL": bool((os.getenv("DATABASE_URL", "").strip() or settings.database_url).strip()),
     }
-    optional = {
-        "OPENAI_API_KEY": bool((os.getenv("OPENAI_API_KEY", "").strip() or settings.openai_api_key).strip()),
-        "OPENAI_MODEL": bool((os.getenv("OPENAI_MODEL", "").strip() or settings.openai_model).strip()),
-    }
+    optional = {}
 
     return {
         "ready": all(required.values()),

@@ -29,7 +29,7 @@ A futuristic, full-stack AI career guidance platform that analyzes CVs and profi
 - 🐍 FastAPI
 - 🗄️ SQLAlchemy
 - 🔒 JWT Auth
-- 🤖 ChatGPT-powered AI pipeline (OpenAI API)
+- 🤖 Built-in AI pipeline for CV and role-fit analysis
 
 ### Database
 - 🧩 SQLite by default (`sqlite:///./nebulaglass.db`)
@@ -128,18 +128,14 @@ VITE_API_URL=http://localhost:8000
 
 ## ⚙️ Configuration Notes
 
-- `OPENAI_API_KEY` (optional): enables ChatGPT-powered analysis. If missing or unavailable, the built-in AI fallback still returns role matches and a summary.
-- `OPENAI_MODEL` (optional, default `gpt-4o-mini`).
+- Built-in AI analysis runs locally in the backend and does not require external LLM keys.
 - Use `GET /env-check` to verify required environment variables are set (returns booleans only, never secret values).
 
-### If `/analyze/{id}` returns 503
+### If `/analyze/{id}` fails
 
-1. If you want ChatGPT-enhanced output, call `GET /env-check` and confirm `optional.OPENAI_API_KEY` is `true`.
-2. Ensure your key starts with `sk-` and is active in OpenAI dashboard.
-3. Confirm billing/quota is enabled for your OpenAI project.
-4. If you set a custom model, verify `OPENAI_MODEL` is valid (default: `gpt-4o-mini`).
-5. Without a valid key, the system automatically falls back to built-in analysis logic.
-6. Restart backend locally or redeploy on Railway after any env variable change.
+1. Call `GET /env-check` and confirm `ready` is `true`.
+2. Verify your uploaded file type is supported and readable (PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG/JPEG).
+3. Restart backend locally or redeploy on Railway after any env variable change.
 
 ---
 
@@ -155,17 +151,7 @@ Deliver fast, clear, and actionable AI career intelligence that helps users beco
 3. Add environment variables in Railway service settings:
    - `SECRET_KEY`
    - `DATABASE_URL`
-   - `OPENAI_API_KEY`
-   - `OPENAI_MODEL` (optional, e.g. `gpt-4o-mini`)
 4. Deploy and open your service URL.
 5. Run a quick readiness check: `GET /env-check`
    - `ready: true` means required variables are present.
-6. Upload a CV and open Analysis page to confirm live ChatGPT output.
-
-### 🔐 If your OpenAI key was exposed
-
-1. Revoke the exposed key in OpenAI dashboard immediately.
-2. Create a new API key.
-3. Update Railway `OPENAI_API_KEY` with the new value.
-4. Redeploy your Railway service.
-
+6. Upload a CV and open Analysis page to confirm role matches and summary output.
