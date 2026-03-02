@@ -470,4 +470,50 @@ class AIPipeline:
         return "\n".join(bullets).strip()
 
 
+    def answer_question(self, question: str, cv_text: str, analysis_insights: dict[str, Any] | None = None, summary: str = "") -> str:
+        q = (question or "").strip().lower()
+        insights = analysis_insights or {}
+
+        top_scores = insights.get("profession_scores") or []
+        top_role = top_scores[0]["name"] if top_scores else "General Professional Role"
+        top_score = top_scores[0]["score"] if top_scores else 55
+        target_fit = int(insights.get("target_fit_percent") or top_score)
+        strengths = insights.get("cv_strengths_for_target") or []
+        gaps = insights.get("cv_gaps_for_target") or []
+        missing = insights.get("missing_requirements") or []
+        evidence = insights.get("evidence_lines") or []
+        alternative = insights.get("alternative_role") or "General Professional Role"
+
+        if any(token in q for token in ["fit", "match", "qualified", "am i good", "suitable"]):
+            return (
+                f"Based on the scanned CV, your current fit is about {target_fit}% for the requested role. "
+                f"Your strongest aligned track right now is {top_role} ({top_score}%). "
+                f"Key evidence: {', '.join(strengths[:4]) if strengths else 'limited direct evidence'}; "
+                f"main gaps: {', '.join((missing or gaps)[:4]) if (missing or gaps) else 'no major gaps detected yet'}."
+            )
+
+        if any(token in q for token in ["improve", "improvement", "fix", "missing", "lacking", "work on"]):
+            steps: list[str] = []
+            if missing:
+                steps.append(f"close role gaps first: {', '.join(missing[:4])}")
+            if not evidence:
+                steps.append("add achievement bullets with measurable outcomes")
+            steps.append("add 2-3 project bullets mapped to target responsibilities")
+            steps.append("prepare STAR stories for your strongest projects")
+            return "To improve your CV fit quickly, " + "; ".join(steps) + "."
+
+        if any(token in q for token in ["alternative", "other role", "different job"]):
+            return f"A strong alternative path from your scanned CV is {alternative}. This is recommended when your target-role requirement coverage is still low."
+
+        if any(token in q for token in ["evidence", "where", "why", "proof"]):
+            return f"The strongest CV evidence used in scoring: {' | '.join(evidence[:2]) if evidence else 'No strong proof lines were found; add clearer achievement bullets.'}"
+
+        return (
+            f"Short answer: your current strongest role is {top_role} ({top_score}%), and target-role fit is {target_fit}%. "
+            f"Prioritize these gaps: {', '.join((missing or gaps)[:3]) if (missing or gaps) else 'none highlighted'}. "
+            f"Then strengthen with quantified impact statements and role-specific project evidence."
+        )
+
+
+
 ai_pipeline = AIPipeline()
