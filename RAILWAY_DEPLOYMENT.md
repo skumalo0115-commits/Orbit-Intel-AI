@@ -54,10 +54,9 @@ find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 Do **not** commit local `.env` files.
 
 ## 2) Required files for Railway (already in this repo)
-- `railway.toml` (explicit Railpack build/start commands)
-- `build.sh` (installs backend + builds frontend)
-- `start.sh` (starts uvicorn)
-- `requirements.txt` at repo root (points to `backend/requirements.txt`)
+- `Dockerfile` (recommended, deterministic Python + frontend build)
+- `requirements.txt` at repo root
+- `railway.toml` / `build.sh` / `start.sh` (fallback path)
 - `Procfile` (legacy fallback)
 
 ## 3) Push code to GitHub
