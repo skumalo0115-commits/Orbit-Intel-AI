@@ -90,6 +90,10 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [assistantQuestion, setAssistantQuestion] = useState('')
+  const [assistantAnswer, setAssistantAnswer] = useState<string | null>(null)
+  const [assistantError, setAssistantError] = useState<string | null>(null)
+  const [assistantLoading, setAssistantLoading] = useState(false)
   const navigate = useNavigate()
   const params = useParams<{ documentId: string }>()
   const documentId = Number(params.documentId)
@@ -159,6 +163,31 @@ export default function AnalysisPage() {
 
   const typedSummary = useTypingText(analysis?.summary?.trim() || 'No summary was generated.', 22)
 
+
+  const askAssistant = async () => {
+    const question = assistantQuestion.trim()
+    if (!question) {
+      setAssistantError('Type a question for the assistant first.')
+      return
+    }
+
+    setAssistantError(null)
+    setAssistantLoading(true)
+    try {
+      const response = await api.post<{ question: string; answer: string }>(`/ask-question/${documentId}`, { question })
+      setAssistantAnswer(response.data.answer)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        setAssistantError(typeof detail === 'string' ? detail : 'Assistant could not answer right now. Please retry.')
+      } else {
+        setAssistantError('Assistant could not answer right now. Please retry.')
+      }
+    } finally {
+      setAssistantLoading(false)
+    }
+  }
+
   const bgStyle = useMemo(
     () => ({
       backgroundImage: "url('https://wallstreetpit.com/wp-content/uploads/news/ai-cg/AI5-G.jpg')",
@@ -217,6 +246,28 @@ export default function AnalysisPage() {
                 <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
                 <p className="text-base text-[#d7deea] leading-relaxed min-h-[120px] whitespace-pre-line">{typedSummary}</p>
                 <p className="text-lg text-cyan-300 mt-3">Document Type: {analysis?.classification || 'Unknown'}</p>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mt-4 rounded-2xl border border-cyan-300/30 p-4 bg-[linear-gradient(160deg,rgba(6,182,212,0.14),rgba(15,23,42,0.65)) ]">
+                <h3 className="text-2xl font-semibold mb-2">Career Assistant</h3>
+                <p className="text-sm text-[#cfd8ea] mb-3">Ask targeted questions about your fit, missing skills, and exact improvements for your CV.</p>
+                <div className="flex flex-col md:flex-row gap-2">
+                  <input
+                    value={assistantQuestion}
+                    onChange={(e) => setAssistantQuestion(e.target.value)}
+                    placeholder="Example: Am I fit for the target role and what should I improve first?"
+                    className="flex-1 rounded-xl border border-white/25 bg-white/10 p-3 text-sm"
+                  />
+                  <button
+                    onClick={askAssistant}
+                    disabled={assistantLoading}
+                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-violet-600 font-semibold disabled:opacity-60"
+                  >
+                    {assistantLoading ? 'Thinking...' : 'Ask Assistant'}
+                  </button>
+                </div>
+                {assistantError && <p className="mt-2 text-sm text-pink-200">{assistantError}</p>}
+                {assistantAnswer && <p className="mt-3 text-sm text-[#d7deea] whitespace-pre-line">{assistantAnswer}</p>}
               </motion.div>
 
               <div className="mt-7 flex justify-center">
