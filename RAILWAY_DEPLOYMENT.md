@@ -1,127 +1,134 @@
-# Railway deployment — baby steps (very detailed)
+# Railway deployment (baby steps)
 
-This guide is written for a first-time deploy.
+This project deploys as **one Railway service**:
+- FastAPI backend
+- React frontend static build served by FastAPI (`frontend/dist`)
 
----
+## 1) Clean your repo before deploy
+Use commands for your shell.
 
-## 0) What this app does in production
-You deploy **one Railway web service** that serves:
-- FastAPI backend (API)
-- React frontend static build (`frontend/dist`) from the same URL
+### PowerShell (Windows)
+```powershell
+# 1) Deactivate virtual env if active
+if (Get-Command deactivate -ErrorAction SilentlyContinue) { deactivate }
 
-So users open one URL and both UI + API work together.
+# 2) Stop Python processes that may lock .venv files
+Get-Process python, uvicorn -ErrorAction SilentlyContinue | Stop-Process -Force
 
----
+# 3) Remove folders only if they exist (prevents "path not found" errors)
+$paths = @("frontend/node_modules", "frontend/dist", ".venv")
+foreach ($p in $paths) {
+  if (Test-Path $p) { Remove-Item -Recurse -Force $p -ErrorAction SilentlyContinue }
+}
 
-## Security warning (important)
-If an API key is ever shared in chat, screenshots, git commits, or logs, treat it as compromised:
-1. Revoke/delete that key in OpenAI dashboard.
-2. Create a new key.
-3. Update Railway `OPENAI_API_KEY` with the new key.
-4. Redeploy.
+# 4) Remove Python cache folders
+Get-ChildItem -Recurse -Directory -Filter __pycache__ -ErrorAction SilentlyContinue |
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+```
 
----
+If `.venv` is still locked, close all terminals/VS Code Python sessions and run:
+```powershell
+cmd /c rmdir /s /q .venv
+```
 
-## 1) Before you deploy (clean your repo)
-Delete these local/generated folders/files **before pushing**:
 
-1. `frontend/node_modules/`
-2. `frontend/dist/`
-3. any `__pycache__/` folder (for example `backend/__pycache__/`)
-4. `.venv/`
-5. local `.env` files with machine-specific secrets
+### If you see: "The system cannot find the file specified"
+That usually means the folder/file is already gone (for example `.venv` was already deleted).
 
-Optional (only needed for local Docker, not Railway):
-6. `docker-compose.yml`
+Use safe checks before delete:
 
-Why: these files are generated locally and can break or slow cloud builds.
+```powershell
+if (Test-Path .venv) { Remove-Item -Recurse -Force .venv }
+if (Test-Path frontend/node_modules) { Remove-Item -Recurse -Force frontend/node_modules }
+if (Test-Path frontend/dist) { Remove-Item -Recurse -Force frontend/dist }
+```
 
----
+This is not a deployment blocker—just continue to the next step.
 
-## 2) Push your code to GitHub
-1. Commit your latest changes.
-2. Push the branch to GitHub.
+### Bash (macOS/Linux/Git Bash)
+```bash
+rm -rf frontend/node_modules frontend/dist .venv
+find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+```
 
-Railway will pull code from GitHub.
+Do **not** commit local `.env` files.
 
----
+## 2) Required files for Railway (already in this repo)
+- `railway.toml` (explicit Railpack build/start commands)
+- `build.sh` (installs backend + builds frontend)
+- `start.sh` (starts uvicorn)
+- `requirements.txt` at repo root (points to `backend/requirements.txt`)
+- `Procfile` (legacy fallback)
 
-## 3) Create project in Railway
-1. Open Railway dashboard.
-2. Click **New Project**.
-3. Choose **Deploy from GitHub Repo**.
-4. Select this repository.
+## 3) Push code to GitHub
+```bash
+git add .
+git commit -m "Prepare Railway deploy"
+git push
+```
 
-Railway will detect `nixpacks.toml` and use it automatically.
+## 4) Create Railway project
+1. Open Railway dashboard
+2. **New Project**
+3. **Deploy from GitHub Repo**
+4. Select this repository
 
----
+## 5) Add PostgreSQL plugin
+1. In Railway project, click **+ New**
+2. Add **PostgreSQL**
+3. Copy its `DATABASE_URL`
 
-## 4) Add PostgreSQL database
-1. In Railway project, click **+ New**.
-2. Add **PostgreSQL** plugin.
-3. Open Postgres plugin variables.
-4. Copy the connection URL.
+## 6) Set web service variables
+Set these in Railway service Variables:
+- `SECRET_KEY` = long random value
+- `DATABASE_URL` = value from PostgreSQL plugin
 
-You will put this value in `DATABASE_URL` on the web service.
+That’s all required for this built-in AI setup.
 
----
+## 7) Deploy and verify
+After deployment finishes:
+1. Open your Railway public URL
+2. Register/login
+3. Upload CV
+4. Open analysis page
 
-## 5) Configure required environment variables (web service)
-Set these variables in your web service:
+## 8) Health check
+Call:
 
-- `DATABASE_URL` = Postgres connection URL from step 4
-- `SECRET_KEY` = long random secret (example: 64+ chars)
-- `AI_FAST_MODE` = `1`
-- `OPENAI_API_KEY` = your OpenAI key (**required for analysis page now**)
-- `OPENAI_MODEL` = `gpt-4o-mini` (or another model you enabled)
+```bash
+GET /env-check
+```
 
-Important:
-- Analysis page is configured to use ChatGPT for all analysis results.
-- If `OPENAI_API_KEY` is missing, analysis endpoint returns a 503 error with a clear message.
+Expect:
+- `ready: true`
+- `required.SECRET_KEY: true`
+- `required.DATABASE_URL: true`
 
----
+## 9) If deploy fails
+- Confirm `DATABASE_URL` exists on the web service
+- Confirm `SECRET_KEY` exists
+- Redeploy after variable updates
+- Check Railway logs for startup/build errors
 
-## 6) Build & start behavior on Railway
-Railway uses:
-- `nixpacks.toml` to install/build
-- `Procfile` fallback start command
 
-Start command is:
-- `uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}`
+## 10) If Railway log says "Railpack could not determine how to build the app"
+This repo now includes explicit build/start config for Railpack:
+- `railway.toml`
+- `build.sh`
+- `start.sh`
+- root `requirements.txt`
 
----
+If you still see the old error:
+1. In Railway, open your service settings.
+2. Trigger **Redeploy** (or clear build cache and redeploy).
+3. Confirm deploy logs show `bash ./build.sh` then `bash ./start.sh`.
 
-## 7) First deployment check (smoke test)
-After deploy finishes, open your Railway public URL and verify:
 
-1. Landing page loads.
-2. Register/Login works.
-3. Upload CV works.
-4. Go to analysis page and confirm it returns ChatGPT-generated results.
+## 11) If you see `Could not open requirements file: /app/backend/requirements.txt`
+This happens when Railway builds from a root where `backend/requirements.txt` is not visible.
 
-If analysis fails, check logs for:
-- missing `OPENAI_API_KEY`
-- OpenAI quota/permission/model issues
-- database connection errors
+This repo now includes a root `requirements.txt` with direct dependencies and a `build.sh` fallback:
+- tries `backend/requirements.txt` when present
+- otherwise uses root `requirements.txt`
 
----
-
-## 8) If frontend looks stale after redeploy
-1. Trigger a new deploy.
-2. Hard refresh browser (`Ctrl+Shift+R` / `Cmd+Shift+R`).
-
-Because frontend is built during deploy, stale cache can show older UI briefly.
-
----
-
-## 9) Quick troubleshooting
-- **Error: OPENAI_API_KEY is required**
-  - Add `OPENAI_API_KEY` in Railway variables and redeploy.
-
-- **500/503 on analysis**
-  - Check Railway logs for OpenAI API response errors.
-  - Verify `OPENAI_MODEL` is valid for your key.
-
-- **Database errors**
-  - Re-check `DATABASE_URL` points to Railway Postgres.
-
+Redeploy after pulling latest changes.
