@@ -1,7 +1,7 @@
 [build]
-command = "bash ./build.sh"
+command = "bash /app/build.sh"
 
 [deploy]
-startCommand = "bash ./start.sh"
+startCommand = "bash /app/start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

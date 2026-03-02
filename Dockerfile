@@ -16,7 +16,9 @@ COPY requirements.txt ./
 RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 
 COPY backend ./backend
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 EXPOSE 8000
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "./start.sh"]
