@@ -60,32 +60,62 @@ class AIPipeline:
                 },
             }
 
-        entities = self._entities(trimmed)
         context = profile_context or {}
-        research = self._research_target_role(context)
 
-        classification = self._classify(trimmed)
-        career = self._career_insights(trimmed, context, research)
-        summary = self._compose_career_summary(career, context, research)
+        try:
+            entities = self._entities(trimmed)
+            research = self._research_target_role(context)
+            classification = self._classify(trimmed)
+            career = self._career_insights(trimmed, context, research)
+            summary = self._compose_career_summary(career, context, research)
 
-        insights = {
-            "word_count": len(trimmed.split()),
-            "entity_count": len(entities),
-            "contains_financial_signals": any("$" in token for token in trimmed.split()),
-            "web_research": research,
-            "analysis_provider": "builtin-ai",
-            **career,
-        }
-        if fallback_reason:
-            insights["analysis_fallback_reason"] = fallback_reason
+            insights = {
+                "word_count": len(trimmed.split()),
+                "entity_count": len(entities),
+                "contains_financial_signals": any("$" in token for token in trimmed.split()),
+                "web_research": research,
+                "analysis_provider": "builtin-ai",
+                **career,
+            }
 
-        return {
-            "summary": summary,
-            "classification": classification,
-            "entities": entities,
-            "embeddings": [],
-            "insights": insights,
-        }
+            return {
+                "summary": summary,
+                "classification": classification,
+                "entities": entities,
+                "embeddings": [],
+                "insights": insights,
+            }
+        except Exception as exc:  # noqa: BLE001
+            fallback_career = {
+                "recommended_professions": ["General Professional Role"],
+                "profession_scores": [{"name": "General Professional Role", "score": 58, "reason": "Fallback analysis was used due to an internal scoring issue."}],
+                "missing_for_top": ["quantified achievements", "role-specific keywords", "tools and frameworks"],
+                "transferable_strengths": [],
+                "target_alignment": "Fallback alignment generated due to a temporary analysis issue.",
+                "target_fit_percent": 58,
+                "cv_strengths_for_target": ["General professional profile detected"],
+                "cv_gaps_for_target": ["target-role keyword coverage", "impact metrics", "evidence depth"],
+                "research_query": "",
+                "research_source": "",
+            }
+            return {
+                "summary": (
+                    "- Analysis ran in safe fallback mode due to a temporary internal issue.\n"
+                    "- Please retry once; if the issue persists, review uploaded CV text quality and profile inputs.\n"
+                    "- Improve role-specific keyword coverage, quantified achievements, and tools alignment for better match confidence."
+                ),
+                "classification": "CV",
+                "entities": [],
+                "embeddings": [],
+                "insights": {
+                    "word_count": len(trimmed.split()),
+                    "entity_count": 0,
+                    "contains_financial_signals": any("$" in token for token in trimmed.split()),
+                    "analysis_provider": "builtin-ai",
+                    "analysis_fallback_reason": f"internal-error: {exc}",
+                    **fallback_career,
+                },
+            }
 
     def _classify(self, text: str) -> str:
         content = text.lower()
