@@ -116,7 +116,10 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
           onSelect(recovered.id)
           return true
         }
-      } catch {
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          return false
+        }
         // Keep retrying below.
       }
 

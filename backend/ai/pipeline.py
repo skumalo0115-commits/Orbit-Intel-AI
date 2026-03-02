@@ -1,30 +1,15 @@
 from typing import Any
 import json
-import os
 import re
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
-from backend.database.config import Settings
 
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
 
     def __init__(self) -> None:
-        settings = Settings()
-        self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or os.getenv("openai_api_key", "").strip()
-        self.openai_model = os.getenv("OPENAI_MODEL", "").strip() or os.getenv("openai_model", "").strip() or "gpt-4o-mini"
-        if not self.openai_api_key:
-            self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or ""
-        if not self.openai_api_key:
-            self.openai_api_key = getattr(settings, "openai_api_key", "") or ""
-        if not self.openai_model:
-            self.openai_model = getattr(settings, "openai_model", "") or "gpt-4o-mini"
-
-        self.fast_mode = os.getenv("AI_FAST_MODE", "1").lower() not in {"0", "false", "no"}
-
         self.profile_map: dict[str, list[str]] = {
             "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++", "software", "backend", "frontend"],
             "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting", "dashboard", "kpi", "data cleaning"],
@@ -58,10 +43,10 @@ class AIPipeline:
         }
 
     def analyze(self, text: str, profile_context: dict[str, str] | None = None) -> dict[str, Any]:
-        trimmed = (text or "")[:4500]
+        trimmed = (text or "")[:9000]
         if not trimmed.strip():
             return {
-                "summary": "The CV could not be read clearly. Add a structured profile, experience with measurable outcomes, and skills aligned to your target role.",
+                "summary": "The CV could not be read clearly. Add a structured profile, measurable achievements, and role-specific skills.",
                 "classification": "Unknown",
                 "entities": [],
                 "embeddings": [],
@@ -69,6 +54,7 @@ class AIPipeline:
                     "word_count": 0,
                     "entity_count": 0,
                     "contains_financial_signals": False,
+                    "analysis_provider": "builtin-ai",
                     "recommended_professions": ["General Professional Role"],
                     "profession_scores": [{"name": "General Professional Role", "score": 60, "reason": "Limited readable signals found."}],
                 },
@@ -78,39 +64,16 @@ class AIPipeline:
         context = profile_context or {}
         research = self._research_target_role(context)
 
-        if not self.openai_api_key.strip():
-            raise RuntimeError("OPENAI_API_KEY is missing. Add it to backend/.env (local) or Railway variables, then restart/redeploy.")
-
-        ai_analysis = self._generate_openai_analysis(trimmed, context, research)
-        if not ai_analysis:
-            raise RuntimeError("ChatGPT analysis request failed. Please retry in a moment.")
-
-        classification = ai_analysis.get("classification") or "CV"
-        summary = ai_analysis.get("summary") or ""
-        profession_scores = ai_analysis.get("profession_scores") or []
-        recommended_professions = ai_analysis.get("recommended_professions") or []
-
-        if not summary or not profession_scores or not recommended_professions:
-            raise RuntimeError("ChatGPT returned an incomplete analysis payload. Please retry.")
-
-        career = {
-            "recommended_professions": recommended_professions[:3],
-            "profession_scores": profession_scores[:3],
-            "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
-            "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
-            "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
-            "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
-            "missing_for_top": ai_analysis.get("missing_for_top") or [],
-            "research_query": (research or {}).get("query", ""),
-            "research_source": (research or {}).get("source", ""),
-        }
+        classification = self._classify(trimmed)
+        career = self._career_insights(trimmed, context, research)
+        summary = self._compose_career_summary(career, context, research)
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
             "web_research": research,
-            "analysis_provider": "openai",
+            "analysis_provider": "builtin-ai",
             **career,
         }
 
@@ -233,13 +196,18 @@ class AIPipeline:
         skills = (profile_context.get("skills") or "").lower()
         target_job_title = (profile_context.get("target_job_title") or "").lower()
         target_job_description = (profile_context.get("target_job_description") or "").lower()
-
         research_summary = ((research or {}).get("summary") or "").lower()
+
         target_blob = " ".join(
             part
             for part in [target_job_title, target_job_description, skills, research_summary]
             if part.strip()
         )
+
+        target_terms = [kw for kw in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", target_blob) if kw not in {"and", "the", "for", "with", "from", "your", "role", "job"}]
+        target_unique = list(dict.fromkeys(target_terms))[:80]
+        target_hits = [kw for kw in target_unique if kw in content]
+        target_fit_percent = int((len(target_hits) / max(1, len(target_unique))) * 100) if target_unique else 0
 
         transferable_keywords = {
             "communication": ["communication", "presentation", "stakeholder"],
@@ -255,11 +223,11 @@ class AIPipeline:
             matched_target = [kw for kw in role_keywords if kw in target_blob]
             matched_skills = [kw for kw in role_keywords if kw in skills]
 
-            score = len(matched_cv) * 14 + len(matched_target) * 16 + len(matched_skills) * 12
+            score = len(matched_cv) * 13 + len(matched_target) * 17 + len(matched_skills) * 12
             if score > 0:
-                reason_terms = (matched_cv + matched_target + matched_skills)[:6]
-                missing = [kw for kw in role_keywords if kw not in set(matched_cv + matched_skills)][:6]
-                scored_profiles.append((profile, score, reason_terms, missing, matched_cv[:8], matched_target[:8]))
+                reason_terms = (matched_cv + matched_target + matched_skills)[:8]
+                missing = [kw for kw in role_keywords if kw not in set(matched_cv + matched_skills)][:8]
+                scored_profiles.append((profile, score, reason_terms, missing, matched_cv[:10], matched_target[:10]))
 
         scored_profiles.sort(key=lambda pair: pair[1], reverse=True)
 
@@ -270,6 +238,7 @@ class AIPipeline:
                 "missing_for_top": ["measurable achievements", "role-specific tools", "certification", "impact metrics"],
                 "transferable_strengths": [],
                 "target_alignment": "No strong alignment could be measured against a specific target role.",
+                "target_fit_percent": target_fit_percent,
                 "cv_strengths_for_target": ["General communication potential"],
                 "cv_gaps_for_target": ["Target role keywords", "job-specific tools", "quantified impact"],
                 "research_query": (research or {}).get("query", ""),
@@ -281,10 +250,12 @@ class AIPipeline:
 
         profession_scores: list[dict[str, Any]] = []
         for name, score, reason_terms, _, _, _ in top:
-            pct = int(58 + ((score / max_score) * 39)) if max_score > 0 else 58
-            pct = max(55, min(98, pct))
-            signal = ", ".join(reason_terms[:5]) if reason_terms else "broad role alignment"
-            reason = f"Signals aligned with CV + target context: {signal}."
+            pct = int(55 + ((score / max_score) * 42)) if max_score > 0 else 58
+            if target_fit_percent:
+                pct = int((pct * 0.78) + (target_fit_percent * 0.22))
+            pct = max(50, min(98, pct))
+            signal = ", ".join(reason_terms[:6]) if reason_terms else "broad role alignment"
+            reason = f"Signals aligned with CV and target context: {signal}."
             profession_scores.append({"name": name, "score": pct, "reason": reason})
 
         top_profile, _, _, top_missing, top_cv_hits, top_target_hits = top[0]
@@ -295,180 +266,30 @@ class AIPipeline:
             if any(word in content for word in words)
         ]
 
-        alignment_ratio = len(set(top_cv_hits).intersection(set(top_target_hits))) / max(1, len(set(top_target_hits)))
-        alignment_percent = int(alignment_ratio * 100)
+        overlap = len(set(top_cv_hits).intersection(set(top_target_hits)))
+        alignment_ratio = overlap / max(1, len(set(top_target_hits)))
+        alignment_percent = int(((alignment_ratio * 70) + (target_fit_percent * 0.3)))
         target_alignment = (
-            f"Alignment with your target track ({top_profile}) is about {alignment_percent}%. "
-            "This is based on overlap between CV evidence and the target role requirements you entered."
+            f"Target-role fit for {top_profile} is approximately {alignment_percent}%. "
+            "This score combines CV evidence overlap with the requirements from your job title/description input."
         )
 
-        cv_gaps_for_target = top_missing[:5] if top_missing else ["quantified achievements", "role-specific portfolio"]
-        cv_strengths_for_target = top_cv_hits[:5] if top_cv_hits else ["general professional experience"]
+        cv_gaps_for_target = top_missing[:6] if top_missing else ["quantified achievements", "role-specific portfolio"]
+        cv_strengths_for_target = top_cv_hits[:6] if top_cv_hits else ["general professional experience"]
 
         return {
             "recommended_professions": [item[0] for item in top],
             "profession_scores": profession_scores,
             "missing_for_top": top_missing,
-            "transferable_strengths": transfer_hits[:4],
+            "transferable_strengths": transfer_hits[:5],
             "target_alignment": target_alignment,
+            "target_fit_percent": alignment_percent,
             "cv_strengths_for_target": cv_strengths_for_target,
             "cv_gaps_for_target": cv_gaps_for_target,
             "target_job_title": profile_context.get("target_job_title") or "",
             "research_query": (research or {}).get("query", ""),
             "research_source": (research or {}).get("source", ""),
         }
-
-    def _extract_json_object(self, content: str) -> dict[str, Any] | None:
-        content = (content or "").strip()
-        if not content:
-            return None
-
-        try:
-            parsed = json.loads(content)
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            pass
-
-        match = re.search(r"\{[\s\S]*\}", content)
-        if not match:
-            return None
-
-        try:
-            parsed = json.loads(match.group(0))
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            return None
-
-    def _generate_openai_analysis(
-        self,
-        cv_text: str,
-        profile_context: dict[str, str],
-        research: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        api_key = self.openai_api_key.strip()
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is missing. Add it in backend/.env or Railway variables, then restart/redeploy.")
-
-        model = self.openai_model
-        target_title = (profile_context.get("target_job_title") or "").strip()
-        target_desc = (profile_context.get("target_job_description") or "").strip()
-        skills = (profile_context.get("skills") or "").strip()
-
-        prompt = (
-            "Analyze this CV against the target role. Return STRICT JSON only, no markdown. "
-            "Be truthful and evidence-based; if evidence is weak, state that. "
-            "JSON schema: "
-            "{"
-            '"classification": string,'
-            '"summary": string (bullet list with newline separators, each line starts with '- '),'
-            '"target_alignment": string,'
-            '"cv_strengths_for_target": string[],'
-            '"cv_gaps_for_target": string[],'
-            '"transferable_strengths": string[],'
-            '"missing_for_top": string[],'
-            '"recommended_professions": string[] (3 items max),'
-            '"profession_scores": [{"name": string, "score": number 0-100, "reason": string}] (3 items max)'
-            "}."
-            " Ensure profession_scores reflect CV evidence and target context.\n\n"
-            f"Target Job Title: {target_title or 'Not provided'}\n"
-            f"Target Job Description: {target_desc or 'Not provided'}\n"
-            f"Skills entered by user: {skills or 'Not provided'}\n"
-            f"Web research context: {(research or {}).get('summary', '')}\n"
-            f"CV Text (truncated):\n{cv_text[:3800]}"
-        )
-
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "You are a precise career-analysis assistant. Output valid JSON only."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-        }
-
-        request = Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-            method="POST",
-        )
-
-        try:
-            with urlopen(request, timeout=35) as response:  # noqa: S310
-                result = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="ignore")
-            try:
-                details = json.loads(body)
-                message = str(details.get("error", {}).get("message") or "").strip()
-            except Exception:
-                message = ""
-
-            status_code = getattr(exc, "code", 0)
-            if status_code == 401:
-                raise RuntimeError("OpenAI rejected the API key (401). Create a new valid key and set OPENAI_API_KEY.") from exc
-            if status_code == 429:
-                raise RuntimeError("OpenAI quota/rate-limit reached (429). Check billing/usage and retry in a minute.") from exc
-            if status_code == 400 and "model" in message.lower():
-                raise RuntimeError(f"OpenAI model error: {message}. Set OPENAI_MODEL to a valid model (example: gpt-4o-mini).") from exc
-            raise RuntimeError(f"OpenAI request failed ({status_code}). {message or 'Check API key, model, and billing.'}") from exc
-        except URLError as exc:
-            raise RuntimeError("Network error while calling OpenAI. Check internet access/firewall and retry.") from exc
-        except Exception as exc:
-            raise RuntimeError("Unexpected error while contacting OpenAI. Check backend logs and retry.") from exc
-
-        content = (
-            result.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        parsed = self._extract_json_object(content)
-        if not parsed:
-            raise RuntimeError("ChatGPT returned an invalid JSON format. Please retry.")
-
-        scores = parsed.get("profession_scores") or []
-        cleaned_scores: list[dict[str, Any]] = []
-        for item in scores[:3]:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "").strip()
-            reason = str(item.get("reason") or "").strip()
-            raw_score = item.get("score", 0)
-            try:
-                numeric = int(float(raw_score))
-            except Exception:
-                numeric = 0
-            numeric = max(0, min(100, numeric))
-            if name:
-                cleaned_scores.append({"name": name, "score": numeric, "reason": reason or "CV-to-role match generated from AI analysis."})
-
-        summary = str(parsed.get("summary") or "").strip()
-        if summary:
-            lines = [line.strip() for line in summary.splitlines() if line.strip()]
-            summary = "\n".join(line if line.startswith("- ") else f"- {line.lstrip('- ').strip()}" for line in lines)
-
-        output = {
-            "classification": str(parsed.get("classification") or "CV"),
-            "summary": summary,
-            "target_alignment": str(parsed.get("target_alignment") or ""),
-            "cv_strengths_for_target": [str(x).strip() for x in (parsed.get("cv_strengths_for_target") or []) if str(x).strip()][:6],
-            "cv_gaps_for_target": [str(x).strip() for x in (parsed.get("cv_gaps_for_target") or []) if str(x).strip()][:6],
-            "transferable_strengths": [str(x).strip() for x in (parsed.get("transferable_strengths") or []) if str(x).strip()][:6],
-            "missing_for_top": [str(x).strip() for x in (parsed.get("missing_for_top") or []) if str(x).strip()][:6],
-            "recommended_professions": [str(x).strip() for x in (parsed.get("recommended_professions") or []) if str(x).strip()][:3],
-            "profession_scores": cleaned_scores,
-        }
-
-        if not output["profession_scores"] or not output["recommended_professions"] or not output["summary"]:
-            raise RuntimeError("ChatGPT response missed required fields. Please retry.")
-
-        return output
-
 
     def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str], research: dict[str, Any] | None = None) -> str:
         top_roles = career.get("recommended_professions", [])[:2]
@@ -502,7 +323,7 @@ class AIPipeline:
         ]
 
         if research_summary:
-            bullets.append(f"- External Role Research: {research_summary}")
+            bullets.append(f"- Role Research Signals: {research_summary}")
         if research_expectations:
             bullets.append(f"- Public Research Expectations: {'; '.join(research_expectations[:4])}.")
         if research_source:
