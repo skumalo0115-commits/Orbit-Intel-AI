@@ -60,6 +60,21 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    if (error.response?.status === 401) {
+      const requestPath = config.url ?? ''
+      const isAuthRequest = requestPath.includes('/auth/login') || requestPath.includes('/auth/register')
+
+      if (!isAuthRequest) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('profile_email')
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth'
+        }
+      }
+
+      return Promise.reject(error)
+    }
+
     const hasResponse = Boolean(error.response)
     const retryableStatus = error.response?.status === 404 || error.response?.status === 502
     const shouldRetry = !hasResponse || retryableStatus

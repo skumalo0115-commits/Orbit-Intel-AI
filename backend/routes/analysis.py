@@ -62,6 +62,11 @@ def analyze_document(
         result = ai_pipeline.analyze(text_content, profile_context=profile_context)
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Analysis engine encountered an internal error: {exc}",
+        ) from exc
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
         record = Analysis(document_id=doc.id)
@@ -107,9 +112,28 @@ def ask_question(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    text = doc.text or ""
-    summary = " ".join(text.split()[:120])
+    text = (doc.text or "").strip()
+    if not text:
+        try:
+            text = TextExtractor.extract(doc.file_path)
+            doc.text = text
+            db.add(doc)
+            db.commit()
+            db.refresh(doc)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unable to read document text for Q&A: {exc}") from exc
+
+    record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
+    if record:
+        insights = record.insights or {}
+        summary = record.summary or ""
+    else:
+        generated = ai_pipeline.analyze(text, profile_context={})
+        insights = generated.get("insights") or {}
+        summary = generated.get("summary") or ""
+
+    answer = ai_pipeline.answer_question(payload.question, text, analysis_insights=insights, summary=summary)
     return {
         "question": payload.question,
-        "answer": f"Contextual answer (baseline): {summary}",
+        "answer": answer,
     }

@@ -29,7 +29,7 @@ A futuristic, full-stack AI career guidance platform that analyzes CVs and profi
 - 🐍 FastAPI
 - 🗄️ SQLAlchemy
 - 🔒 JWT Auth
-- 🤖 ChatGPT-powered AI pipeline (OpenAI API)
+- 🤖 Built-in AI pipeline for CV and role-fit analysis
 
 ### Database
 - 🧩 SQLite by default (`sqlite:///./nebulaglass.db`)
@@ -74,7 +74,7 @@ frontend/
 python -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
-cp backend/.env.example .env
+cp backend/.env.example backend/.env
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -128,17 +128,14 @@ VITE_API_URL=http://localhost:8000
 
 ## ⚙️ Configuration Notes
 
-- `OPENAI_API_KEY` (**required**): used for CV analysis on the Analysis page.
-- `OPENAI_MODEL` (optional, default `gpt-4o-mini`).
+- Built-in AI analysis runs locally in the backend and does not require external LLM keys.
 - Use `GET /env-check` to verify required environment variables are set (returns booleans only, never secret values).
 
-### If `/analyze/{id}` returns 503
+### If `/analyze/{id}` fails
 
-1. Call `GET /env-check` and confirm `required.OPENAI_API_KEY` is `true`.
-2. Ensure your key starts with `sk-` and is active in OpenAI dashboard.
-3. Confirm billing/quota is enabled for your OpenAI project.
-4. If you set a custom model, verify `OPENAI_MODEL` is valid (default: `gpt-4o-mini`).
-5. Restart backend locally or redeploy on Railway after any env variable change.
+1. Call `GET /env-check` and confirm `ready` is `true`.
+2. Verify your uploaded file type is supported and readable (PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG/JPEG).
+3. Restart backend locally or redeploy on Railway after any env variable change.
 
 ---
 
@@ -149,22 +146,18 @@ Deliver fast, clear, and actionable AI career intelligence that helps users beco
 
 ## 🚂 Deploy to Railway (Step by Step)
 
-1. Push this repository to GitHub.
-2. In Railway, create a **New Project** → **Deploy from GitHub Repo**.
-3. Add environment variables in Railway service settings:
-   - `SECRET_KEY`
-   - `DATABASE_URL`
-   - `OPENAI_API_KEY`
-   - `OPENAI_MODEL` (optional, e.g. `gpt-4o-mini`)
-4. Deploy and open your service URL.
-5. Run a quick readiness check: `GET /env-check`
-   - `ready: true` means required variables are present.
-6. Upload a CV and open Analysis page to confirm live ChatGPT output.
+Use the dedicated deployment guide:
 
-### 🔐 If your OpenAI key was exposed
+- See `RAILWAY_DEPLOYMENT.md` for exact cleanup commands, variables, and verification steps (includes PowerShell-safe cleanup + fix for "The system cannot find the file specified").
 
-1. Revoke the exposed key in OpenAI dashboard immediately.
-2. Create a new API key.
-3. Update Railway `OPENAI_API_KEY` with the new value.
-4. Redeploy your Railway service.
+Quick checklist:
+1. Push repository to GitHub.
+2. In Railway: New Project -> Deploy from GitHub Repo.
+3. Add PostgreSQL plugin.
+4. Set web service variables: `SECRET_KEY`, `DATABASE_URL`.
+5. Deploy and verify `/env-check` returns `ready: true`.
+6. Upload CV and open Analysis page.
 
+
+### Railway build-detection note
+If Railway shows `Railpack could not determine how to build the app`, redeploy after pulling the latest commit that adds `railway.toml`, `build.sh`, `start.sh`, and root `requirements.txt`.
