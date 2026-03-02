@@ -265,9 +265,17 @@ class AIPipeline:
 
         research_expectations = [str(item).lower() for item in ((research or {}).get("key_expectations") or [])]
 
-        stop_words = {"and", "the", "for", "with", "from", "your", "role", "job", "that", "this", "have", "will", "using", "into", "are"}
+        stop_words = {
+            "and", "or", "and/or", "the", "for", "with", "from", "your", "role", "job", "that", "this", "have", "will", "using", "into", "are", "to", "of", "in", "on", "at", "as", "etc",
+            "junior", "senior", "mid", "entry", "level", "developer",
+        }
         requirement_blob = " ".join(part for part in [target_job_title, target_job_description, skills, " ".join(research_expectations)] if part.strip())
-        requirement_terms = [kw for kw in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", requirement_blob) if kw not in stop_words]
+        raw_terms = [kw.strip().lower() for kw in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", requirement_blob)]
+        requirement_terms = [
+            kw
+            for kw in raw_terms
+            if kw not in stop_words and "/" not in kw and not kw.endswith("/") and not kw.startswith("/")
+        ]
         requirement_terms = list(dict.fromkeys(requirement_terms))[:90]
 
         cv_signals = self._extract_cv_signals(text)
@@ -353,7 +361,11 @@ class AIPipeline:
         cv_strengths = list(dict.fromkeys(top[0][4] + matched_requirements))[:6]
         cv_gaps = list(dict.fromkeys(missing_requirements + top[0][3]))[:6]
 
-        alternative_role = best_role if (not target_profile or best_role != target_profile) else (top[1][0] if len(top) > 1 else top[0][0])
+        if target_role_score >= 78:
+            alternative_role = "Not required — target role already matches strongly"
+        else:
+            alternative_candidates = [item["name"] for item in profession_scores if item["name"] != target_profile and item["score"] >= 60]
+            alternative_role = alternative_candidates[0] if alternative_candidates else best_role
 
         return {
             "recommended_professions": [item[0] for item in top],
@@ -417,7 +429,7 @@ class AIPipeline:
             f"- Top Role Matches: {top_matches_text}.",
             f"- Strongest Evidence Found in CV: {', '.join(cv_strengths) if cv_strengths else 'role-relevant terms were limited in the uploaded CV text'}.",
             f"- Requirement Coverage: matched -> {', '.join(matched_requirements) if matched_requirements else 'few explicit matches'}; missing -> {', '.join(missing_requirements) if missing_requirements else 'no major requirement gaps detected'}.",
-            f"- Alternative Role Recommendation: {alternative_role} (better aligned if {target_job_title} remains too competitive right now).",
+            f"- Alternative Role Recommendation: {alternative_role}.",
             f"- Immediate Improvement Plan: {'; '.join(recommendation_steps)}.",
         ]
 
