@@ -257,6 +257,31 @@ class AIPipeline:
             **section_flags,
         }
 
+    def _extract_evidence_snippets(self, text: str, keywords: list[str], limit: int = 3) -> list[str]:
+        lines = [line.strip() for line in re.split(r"[\n\r]+", text) if line.strip()]
+        ranked: list[tuple[int, str]] = []
+        lowered_keywords = [kw.lower() for kw in keywords if kw]
+
+        for line in lines:
+            lower = line.lower()
+            score = sum(2 for kw in lowered_keywords if kw and kw in lower)
+            if re.search(r"\b(built|developed|implemented|improved|led|optimized|automated|designed|delivered)\b", lower):
+                score += 2
+            if re.search(r"\b\d+(?:\.\d+)?%\b|\b\d+\s*(?:k|m|million|billion)\b", lower):
+                score += 2
+            if score > 0:
+                ranked.append((score, line))
+
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        selected: list[str] = []
+        for _, line in ranked:
+            normalized = re.sub(r"\s+", " ", line)
+            if normalized not in selected:
+                selected.append(normalized[:180].rstrip(" ."))
+            if len(selected) >= limit:
+                break
+        return selected
+
     def _career_insights(self, text: str, profile_context: dict[str, str], research: dict[str, Any] | None = None) -> dict[str, Any]:
         content = text.lower()
         skills = (profile_context.get("skills") or "").lower()
@@ -271,10 +296,11 @@ class AIPipeline:
         }
         requirement_blob = " ".join(part for part in [target_job_title, target_job_description, skills, " ".join(research_expectations)] if part.strip())
         raw_terms = [kw.strip().lower() for kw in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", requirement_blob)]
+        short_allow = {"sql", "api", "aws", "gcp", "c++", "c#", "ui", "ux"}
         requirement_terms = [
             kw
             for kw in raw_terms
-            if kw not in stop_words and "/" not in kw and not kw.endswith("/") and not kw.startswith("/")
+            if kw not in stop_words and "/" not in kw and not kw.endswith("/") and not kw.startswith("/") and (len(kw) >= 4 or kw in short_allow)
         ]
         requirement_terms = list(dict.fromkeys(requirement_terms))[:90]
 
@@ -360,6 +386,7 @@ class AIPipeline:
 
         cv_strengths = list(dict.fromkeys(top[0][4] + matched_requirements))[:6]
         cv_gaps = list(dict.fromkeys(missing_requirements + top[0][3]))[:6]
+        evidence_lines = self._extract_evidence_snippets(text, cv_strengths + matched_requirements, limit=3)
 
         if target_role_score >= 78:
             alternative_role = "Not required — target role already matches strongly"
@@ -380,6 +407,7 @@ class AIPipeline:
             "missing_requirements": missing_requirements[:10],
             "alternative_role": alternative_role,
             "cv_signal_quality": cv_signals,
+            "evidence_lines": evidence_lines,
             "target_job_title": profile_context.get("target_job_title") or "",
             "research_query": (research or {}).get("query", ""),
             "research_source": (research or {}).get("source", ""),
@@ -401,6 +429,7 @@ class AIPipeline:
         readiness = "Strong" if target_fit >= 82 else "Promising" if target_fit >= 68 else "Needs Improvement"
 
         cv_signal_quality = career.get("cv_signal_quality", {})
+        evidence_lines = career.get("evidence_lines", [])[:2]
         years = cv_signal_quality.get("years_experience", 0)
         impacts = cv_signal_quality.get("quantified_impact_count", 0)
         project_flag = cv_signal_quality.get("has_projects", False)
@@ -408,7 +437,7 @@ class AIPipeline:
 
         recommendation_steps: list[str] = []
         if impacts < 2:
-            recommendation_steps.append("Add 3–5 quantified achievement bullets (%, $, time saved, growth) under recent roles")
+            recommendation_steps.append("Add 3–5 quantified achievement bullets (percent improvements, time saved, growth) under recent roles")
         if not project_flag:
             recommendation_steps.append("Add a projects section that mirrors the target role stack and business outcomes")
         if missing_requirements:
@@ -428,6 +457,7 @@ class AIPipeline:
             f"- Fit Decision: {readiness} fit ({target_fit}%). The closest evidence-backed role from your CV is {top_role}.",
             f"- Top Role Matches: {top_matches_text}.",
             f"- Strongest Evidence Found in CV: {', '.join(cv_strengths) if cv_strengths else 'role-relevant terms were limited in the uploaded CV text'}.",
+            f"- CV Evidence Lines: {' | '.join(evidence_lines) if evidence_lines else 'Add achievement-focused bullets so evidence extraction can cite stronger proof lines.'}.",
             f"- Requirement Coverage: matched -> {', '.join(matched_requirements) if matched_requirements else 'few explicit matches'}; missing -> {', '.join(missing_requirements) if missing_requirements else 'no major requirement gaps detected'}.",
             f"- Alternative Role Recommendation: {alternative_role}.",
             f"- Immediate Improvement Plan: {'; '.join(recommendation_steps)}.",
