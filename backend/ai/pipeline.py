@@ -78,41 +78,50 @@ class AIPipeline:
         context = profile_context or {}
         research = self._research_target_role(context)
 
-        if not self.openai_api_key.strip():
-            raise RuntimeError("OPENAI_API_KEY is missing. Add it to backend/.env (local) or Railway variables, then restart/redeploy.")
+        classification = self._classify(trimmed)
+        career = self._career_insights(trimmed, context, research)
+        summary = self._compose_career_summary(career, context, research)
+        analysis_provider = "builtin"
+        fallback_reason = ""
 
-        ai_analysis = self._generate_openai_analysis(trimmed, context, research)
-        if not ai_analysis:
-            raise RuntimeError("ChatGPT analysis request failed. Please retry in a moment.")
+        if self.openai_api_key.strip():
+            try:
+                ai_analysis = self._generate_openai_analysis(trimmed, context, research)
+                classification = ai_analysis.get("classification") or classification
+                summary = ai_analysis.get("summary") or summary
 
-        classification = ai_analysis.get("classification") or "CV"
-        summary = ai_analysis.get("summary") or ""
-        profession_scores = ai_analysis.get("profession_scores") or []
-        recommended_professions = ai_analysis.get("recommended_professions") or []
-
-        if not summary or not profession_scores or not recommended_professions:
-            raise RuntimeError("ChatGPT returned an incomplete analysis payload. Please retry.")
-
-        career = {
-            "recommended_professions": recommended_professions[:3],
-            "profession_scores": profession_scores[:3],
-            "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
-            "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
-            "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
-            "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
-            "missing_for_top": ai_analysis.get("missing_for_top") or [],
-            "research_query": (research or {}).get("query", ""),
-            "research_source": (research or {}).get("source", ""),
-        }
+                ai_profession_scores = ai_analysis.get("profession_scores") or []
+                ai_recommended_professions = ai_analysis.get("recommended_professions") or []
+                if ai_profession_scores and ai_recommended_professions:
+                    career = {
+                        "recommended_professions": ai_recommended_professions[:3],
+                        "profession_scores": ai_profession_scores[:3],
+                        "target_alignment": ai_analysis.get("target_alignment") or career.get("target_alignment", "Alignment estimated from CV evidence and target role context."),
+                        "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or career.get("cv_strengths_for_target", []),
+                        "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or career.get("cv_gaps_for_target", []),
+                        "transferable_strengths": ai_analysis.get("transferable_strengths") or career.get("transferable_strengths", []),
+                        "missing_for_top": ai_analysis.get("missing_for_top") or career.get("missing_for_top", []),
+                        "research_query": (research or {}).get("query", ""),
+                        "research_source": (research or {}).get("source", ""),
+                    }
+                    analysis_provider = "openai"
+                else:
+                    fallback_reason = "OpenAI response missed profession matches; used built-in analysis fallback."
+            except RuntimeError as exc:
+                fallback_reason = f"OpenAI unavailable ({exc}); used built-in analysis fallback."
+        else:
+            fallback_reason = "OPENAI_API_KEY not configured; used built-in analysis fallback."
 
         insights = {
             "word_count": len(trimmed.split()),
             "entity_count": len(entities),
             "contains_financial_signals": any("$" in token for token in trimmed.split()),
             "web_research": research,
-            "analysis_provider": "openai",
+            "analysis_provider": analysis_provider,
             **career,
         }
+        if fallback_reason:
+            insights["analysis_fallback_reason"] = fallback_reason
 
         return {
             "summary": summary,
