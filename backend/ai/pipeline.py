@@ -76,6 +76,8 @@ class AIPipeline:
             "analysis_provider": "builtin-ai",
             **career,
         }
+        if fallback_reason:
+            insights["analysis_fallback_reason"] = fallback_reason
 
         return {
             "summary": summary,
