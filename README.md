@@ -74,7 +74,7 @@ frontend/
 python -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
-cp backend/.env.example .env
+cp backend/.env.example backend/.env
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
