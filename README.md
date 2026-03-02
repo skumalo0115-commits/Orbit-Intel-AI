@@ -2,42 +2,30 @@
 
 # 🚀 Orbit Intel-AI — AI Career Intelligence Platform
 
-A futuristic, full-stack AI career guidance platform that analyzes CVs and profile context to recommend realistic role matches, hiring-readiness insights, and practical improvement plans.
+An end-to-end career guidance app that lets users upload a CV, compare it to a target role, and get practical, evidence-based recommendations.
 
 ---
 
-## ✨ What this project does
+## ✨ Core Features
 
-- 🔐 **Authentication** (register/login with JWT)
-- 📄 **CV Upload** (PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG, JPEG)
-- 🧠 **AI Career Analysis** (top 3 role matches with confidence scores)
-- 🧭 **Career Suggestion Summary** (hireability, strengths, improvement priorities, 30/60/90 plan)
-- 🪄 **Interactive Frontend UX** (animated cards, loaders, smooth typewriter text)
+- 🔐 **Secure Auth**: Register/Login with JWT.
+- 📄 **CV Upload**: PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG, JPEG.
+- 🧠 **Built-in AI Analysis**: Local role-fit engine (no external LLM key required).
+- 🎯 **Role Match + Gap Detection**: Top matches, percentages, strengths, and missing requirements.
+- 💬 **Career Assistant Q&A**: Ask questions about fit/improvements on Analysis page.
+- 🌌 **Modern UI**: React + Tailwind + motion effects.
 
 ---
 
 ## 🧱 Tech Stack
 
-### Frontend
-- ⚛️ React 18 + TypeScript
-- ⚡ Vite
-- 🎨 TailwindCSS
-- 🎬 Framer Motion
-- 🌐 Axios + React Router
-
-### Backend
-- 🐍 FastAPI
-- 🗄️ SQLAlchemy
-- 🔒 JWT Auth
-- 🤖 Built-in AI pipeline for CV and role-fit analysis
-
-### Database
-- 🧩 SQLite by default (`sqlite:///./nebulaglass.db`)
-- 🐘 PostgreSQL supported via `DATABASE_URL`
+- ⚛️ Frontend: React 18, TypeScript, Vite, TailwindCSS, Framer Motion
+- 🐍 Backend: FastAPI, SQLAlchemy, JWT auth
+- 🗄️ DB: SQLite by default, PostgreSQL for production
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Layout
 
 ```bash
 backend/
@@ -54,21 +42,9 @@ frontend/
 
 ---
 
-## 🧠 AI Analysis Logic (High Level)
-
-1. Upload CV/document.
-2. Extract text (on-demand at analysis time).
-3. Score CV against a broad corporate role map.
-4. Blend CV signals + dashboard profile context (skills/interests).
-5. Return:
-   - Top 3 role cards with percentage confidence.
-   - AI career summary focused on **hireability improvements**.
-
----
-
 ## 🛠️ Local Development
 
-## 1) Backend
+### 1) Backend
 
 ```bash
 python -m venv .venv
@@ -84,7 +60,7 @@ Health check:
 curl http://localhost:8000/
 ```
 
-## 2) Frontend
+### 2) Frontend
 
 ```bash
 cd frontend
@@ -95,7 +71,7 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 Open: `http://localhost:5173`
 
-Set API URL in `frontend/.env`:
+If needed set API URL in `frontend/.env`:
 
 ```bash
 VITE_API_URL=http://localhost:8000
@@ -126,38 +102,57 @@ VITE_API_URL=http://localhost:8000
 
 ---
 
-## ⚙️ Configuration Notes
+## ⚙️ Configuration
 
-- Built-in AI analysis runs locally in the backend and does not require external LLM keys.
-- Use `GET /env-check` to verify required environment variables are set (returns booleans only, never secret values).
+Required environment variables:
 
-### If `/analyze/{id}` fails
+- `SECRET_KEY`
+- `DATABASE_URL` (for production/Postgres)
 
-1. Call `GET /env-check` and confirm `ready` is `true`.
-2. Verify your uploaded file type is supported and readable (PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG/JPEG).
-3. Restart backend locally or redeploy on Railway after any env variable change.
+Built-in analysis does **not** require OpenAI keys.
+
+Check runtime readiness:
+
+```bash
+GET /env-check
+```
+
+Expected:
+- `ready: true`
+- `required.SECRET_KEY: true`
+- `required.DATABASE_URL: true` (in production)
 
 ---
 
-## 📌 Product Goal
+## 🚂 Railway Deployment (Quick Guide)
 
-Deliver fast, clear, and actionable AI career intelligence that helps users become more hireable for their target industry.
+For full step-by-step instructions (PowerShell + Bash), see:
 
-
-## 🚂 Deploy to Railway (Step by Step)
-
-Use the dedicated deployment guide:
-
-- See `RAILWAY_DEPLOYMENT.md` for exact cleanup commands, variables, and verification steps (includes PowerShell-safe cleanup + fix for "The system cannot find the file specified").
+- 📘 `RAILWAY_DEPLOYMENT.md`
 
 Quick checklist:
-1. Push repository to GitHub.
-2. In Railway: New Project -> Deploy from GitHub Repo.
+1. Push repo to GitHub.
+2. Railway → New Project → Deploy from GitHub Repo.
 3. Add PostgreSQL plugin.
-4. Set web service variables: `SECRET_KEY`, `DATABASE_URL`.
-5. Deploy and verify `/env-check` returns `ready: true`.
-6. Upload CV and open Analysis page.
+4. Set service vars: `SECRET_KEY`, `DATABASE_URL`.
+5. Deploy and confirm `/env-check` is ready.
 
+### 🧯 If Railway shows build errors
 
-### Railway build-detection note
-If Railway shows `Railpack could not determine how to build the app`, redeploy after pulling the latest commit that adds `railway.toml`, `build.sh`, `start.sh`, and root `requirements.txt`.
+If you see:
+- `Railpack could not determine how to build the app`
+- `Could not open requirements file ... /app/backend/requirements.txt`
+
+This repo already includes explicit deployment files:
+- `railway.toml`
+- `build.sh`
+- `start.sh`
+- root `requirements.txt`
+
+Redeploy after pulling latest changes.
+
+---
+
+## 🎯 Product Goal
+
+Deliver clear, actionable, and realistic career guidance that helps users become more hireable.

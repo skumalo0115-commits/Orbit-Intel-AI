@@ -122,3 +122,13 @@ If you still see the old error:
 1. In Railway, open your service settings.
 2. Trigger **Redeploy** (or clear build cache and redeploy).
 3. Confirm deploy logs show `bash ./build.sh` then `bash ./start.sh`.
+
+
+## 11) If you see `Could not open requirements file: /app/backend/requirements.txt`
+This happens when Railway builds from a root where `backend/requirements.txt` is not visible.
+
+This repo now includes a root `requirements.txt` with direct dependencies and a `build.sh` fallback:
+- tries `backend/requirements.txt` when present
+- otherwise uses root `requirements.txt`
+
+Redeploy after pulling latest changes.
