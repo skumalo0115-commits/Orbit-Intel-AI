@@ -143,13 +143,11 @@ If you see:
 - `Railpack could not determine how to build the app`
 - `Could not open requirements file ... /app/backend/requirements.txt`
 
-This repo already includes explicit deployment files:
-- `railway.toml`
-- `build.sh`
-- `start.sh`
-- root `requirements.txt`
+This repo includes explicit deployment config. Railway can build either:
+- `Dockerfile` (recommended, deterministic build with frontend assets)
+- or `railway.toml` + `build.sh` + `start.sh`
 
-Redeploy after pulling latest changes.
+Redeploy after pulling latest changes (clear build cache if needed).
 
 ---
 
