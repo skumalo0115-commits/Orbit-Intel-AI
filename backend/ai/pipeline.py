@@ -1,30 +1,15 @@
 from typing import Any
 import json
-import os
 import re
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
-from backend.database.config import Settings
 
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
 
     def __init__(self) -> None:
-        settings = Settings()
-        self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or os.getenv("openai_api_key", "").strip()
-        self.openai_model = os.getenv("OPENAI_MODEL", "").strip() or os.getenv("openai_model", "").strip() or "gpt-4o-mini"
-        if not self.openai_api_key:
-            self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip() or ""
-        if not self.openai_api_key:
-            self.openai_api_key = getattr(settings, "openai_api_key", "") or ""
-        if not self.openai_model:
-            self.openai_model = getattr(settings, "openai_model", "") or "gpt-4o-mini"
-
-        self.fast_mode = os.getenv("AI_FAST_MODE", "1").lower() not in {"0", "false", "no"}
-
         self.profile_map: dict[str, list[str]] = {
             "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++", "software", "backend", "frontend"],
             "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting", "dashboard", "kpi", "data cleaning"],
@@ -58,10 +43,10 @@ class AIPipeline:
         }
 
     def analyze(self, text: str, profile_context: dict[str, str] | None = None) -> dict[str, Any]:
-        trimmed = (text or "")[:4500]
+        trimmed = (text or "")[:9000]
         if not trimmed.strip():
             return {
-                "summary": "The CV could not be read clearly. Add a structured profile, experience with measurable outcomes, and skills aligned to your target role.",
+                "summary": "The CV could not be read clearly. Add a structured profile, measurable achievements, and role-specific skills.",
                 "classification": "Unknown",
                 "entities": [],
                 "embeddings": [],
@@ -69,58 +54,68 @@ class AIPipeline:
                     "word_count": 0,
                     "entity_count": 0,
                     "contains_financial_signals": False,
+                    "analysis_provider": "builtin-ai",
                     "recommended_professions": ["General Professional Role"],
                     "profession_scores": [{"name": "General Professional Role", "score": 60, "reason": "Limited readable signals found."}],
                 },
             }
 
-        entities = self._entities(trimmed)
         context = profile_context or {}
-        research = self._research_target_role(context)
 
-        if not self.openai_api_key.strip():
-            raise RuntimeError("OPENAI_API_KEY is missing. Add it to backend/.env (local) or Railway variables, then restart/redeploy.")
+        try:
+            entities = self._entities(trimmed)
+            research = self._research_target_role(context)
+            classification = self._classify(trimmed)
+            career = self._career_insights(trimmed, context, research)
+            summary = self._compose_career_summary(career, context, research)
 
-        ai_analysis = self._generate_openai_analysis(trimmed, context, research)
-        if not ai_analysis:
-            raise RuntimeError("ChatGPT analysis request failed. Please retry in a moment.")
+            insights = {
+                "word_count": len(trimmed.split()),
+                "entity_count": len(entities),
+                "contains_financial_signals": any("$" in token for token in trimmed.split()),
+                "web_research": research,
+                "analysis_provider": "builtin-ai",
+                **career,
+            }
 
-        classification = ai_analysis.get("classification") or "CV"
-        summary = ai_analysis.get("summary") or ""
-        profession_scores = ai_analysis.get("profession_scores") or []
-        recommended_professions = ai_analysis.get("recommended_professions") or []
-
-        if not summary or not profession_scores or not recommended_professions:
-            raise RuntimeError("ChatGPT returned an incomplete analysis payload. Please retry.")
-
-        career = {
-            "recommended_professions": recommended_professions[:3],
-            "profession_scores": profession_scores[:3],
-            "target_alignment": ai_analysis.get("target_alignment") or "Alignment estimated from CV evidence and target role context.",
-            "cv_strengths_for_target": ai_analysis.get("cv_strengths_for_target") or [],
-            "cv_gaps_for_target": ai_analysis.get("cv_gaps_for_target") or [],
-            "transferable_strengths": ai_analysis.get("transferable_strengths") or [],
-            "missing_for_top": ai_analysis.get("missing_for_top") or [],
-            "research_query": (research or {}).get("query", ""),
-            "research_source": (research or {}).get("source", ""),
-        }
-
-        insights = {
-            "word_count": len(trimmed.split()),
-            "entity_count": len(entities),
-            "contains_financial_signals": any("$" in token for token in trimmed.split()),
-            "web_research": research,
-            "analysis_provider": "openai",
-            **career,
-        }
-
-        return {
-            "summary": summary,
-            "classification": classification,
-            "entities": entities,
-            "embeddings": [],
-            "insights": insights,
-        }
+            return {
+                "summary": summary,
+                "classification": classification,
+                "entities": entities,
+                "embeddings": [],
+                "insights": insights,
+            }
+        except Exception as exc:  # noqa: BLE001
+            fallback_career = {
+                "recommended_professions": ["General Professional Role"],
+                "profession_scores": [{"name": "General Professional Role", "score": 58, "reason": "Fallback analysis was used due to an internal scoring issue."}],
+                "missing_for_top": ["quantified achievements", "role-specific keywords", "tools and frameworks"],
+                "transferable_strengths": [],
+                "target_alignment": "Fallback alignment generated due to a temporary analysis issue.",
+                "target_fit_percent": 58,
+                "cv_strengths_for_target": ["General professional profile detected"],
+                "cv_gaps_for_target": ["target-role keyword coverage", "impact metrics", "evidence depth"],
+                "research_query": "",
+                "research_source": "",
+            }
+            return {
+                "summary": (
+                    "- Analysis ran in safe fallback mode due to a temporary internal issue.\n"
+                    "- Please retry once; if the issue persists, review uploaded CV text quality and profile inputs.\n"
+                    "- Improve role-specific keyword coverage, quantified achievements, and tools alignment for better match confidence."
+                ),
+                "classification": "CV",
+                "entities": [],
+                "embeddings": [],
+                "insights": {
+                    "word_count": len(trimmed.split()),
+                    "entity_count": 0,
+                    "contains_financial_signals": any("$" in token for token in trimmed.split()),
+                    "analysis_provider": "builtin-ai",
+                    "analysis_fallback_reason": f"internal-error: {exc}",
+                    **fallback_career,
+                },
+            }
 
     def _classify(self, text: str) -> str:
         content = text.lower()
@@ -228,285 +223,249 @@ class AIPipeline:
             "key_expectations": deduped_expectations,
         }
 
+    def _extract_cv_signals(self, text: str) -> dict[str, Any]:
+        lower = text.lower()
+
+        years_found = [int(match) for match in re.findall(r"(\d{1,2})\+?\s*(?:years|yrs)", lower)]
+        years_experience = max(years_found) if years_found else 0
+
+        quantified_impacts = re.findall(r"\b\d+(?:\.\d+)?%\b|\$\s?\d+[\d,]*|\b\d+\s*(?:k|m|million|billion)\b", lower)
+        achievement_lines = [line.strip() for line in text.splitlines() if re.search(r"\b(increased|improved|reduced|built|delivered|launched|automated|optimized)\b", line.lower())]
+
+        section_flags = {
+            "has_projects": bool(re.search(r"\bprojects?\b", lower)),
+            "has_certifications": bool(re.search(r"\b(certifications?|certificate|coursera|udemy|aws certified|azure certified|google certified)\b", lower)),
+            "has_education": bool(re.search(r"\b(bachelor|master|phd|degree|university|college)\b", lower)),
+        }
+
+        soft_signals = [
+            label
+            for label, words in {
+                "communication": ["communication", "presentation", "stakeholder"],
+                "leadership": ["led", "managed", "mentored", "supervised"],
+                "problem_solving": ["solved", "optimized", "improved", "debugged"],
+                "collaboration": ["team", "cross-functional", "collaborated"],
+            }.items()
+            if any(word in lower for word in words)
+        ]
+
+        return {
+            "years_experience": years_experience,
+            "quantified_impact_count": len(quantified_impacts),
+            "achievement_evidence_count": len(achievement_lines),
+            "soft_signals": soft_signals,
+            **section_flags,
+        }
+
+    def _extract_evidence_snippets(self, text: str, keywords: list[str], limit: int = 3) -> list[str]:
+        lines = [line.strip() for line in re.split(r"[\n\r]+", text) if line.strip()]
+        ranked: list[tuple[int, str]] = []
+        lowered_keywords = [kw.lower() for kw in keywords if kw]
+
+        for line in lines:
+            lower = line.lower()
+            score = sum(2 for kw in lowered_keywords if kw and kw in lower)
+            if re.search(r"\b(built|developed|implemented|improved|led|optimized|automated|designed|delivered)\b", lower):
+                score += 2
+            if re.search(r"\b\d+(?:\.\d+)?%\b|\b\d+\s*(?:k|m|million|billion)\b", lower):
+                score += 2
+            if score > 0:
+                ranked.append((score, line))
+
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        selected: list[str] = []
+        for _, line in ranked:
+            normalized = re.sub(r"\s+", " ", line)
+            if normalized not in selected:
+                selected.append(normalized[:180].rstrip(" ."))
+            if len(selected) >= limit:
+                break
+        return selected
+
     def _career_insights(self, text: str, profile_context: dict[str, str], research: dict[str, Any] | None = None) -> dict[str, Any]:
         content = text.lower()
         skills = (profile_context.get("skills") or "").lower()
-        target_job_title = (profile_context.get("target_job_title") or "").lower()
+        target_job_title = (profile_context.get("target_job_title") or "").lower().strip()
         target_job_description = (profile_context.get("target_job_description") or "").lower()
 
-        research_summary = ((research or {}).get("summary") or "").lower()
-        target_blob = " ".join(
-            part
-            for part in [target_job_title, target_job_description, skills, research_summary]
-            if part.strip()
-        )
+        research_expectations = [str(item).lower() for item in ((research or {}).get("key_expectations") or [])]
 
-        transferable_keywords = {
-            "communication": ["communication", "presentation", "stakeholder"],
-            "leadership": ["lead", "managed", "supervised", "mentored"],
-            "delivery": ["delivered", "launched", "implemented", "improved"],
-            "analytics": ["analyzed", "analysis", "insight", "kpi"],
-            "collaboration": ["team", "collaborated", "cross-functional"],
+        stop_words = {
+            "and", "or", "and/or", "the", "for", "with", "from", "your", "role", "job", "that", "this", "have", "will", "using", "into", "are", "to", "of", "in", "on", "at", "as", "etc",
+            "junior", "senior", "mid", "entry", "level", "developer",
         }
+        requirement_blob = " ".join(part for part in [target_job_title, target_job_description, skills, " ".join(research_expectations)] if part.strip())
+        raw_terms = [kw.strip().lower() for kw in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", requirement_blob)]
+        short_allow = {"sql", "api", "aws", "gcp", "c++", "c#", "ui", "ux"}
+        requirement_terms = [
+            kw
+            for kw in raw_terms
+            if kw not in stop_words and "/" not in kw and not kw.endswith("/") and not kw.startswith("/") and (len(kw) >= 4 or kw in short_allow)
+        ]
+        requirement_terms = list(dict.fromkeys(requirement_terms))[:90]
 
-        scored_profiles: list[tuple[str, int, list[str], list[str], list[str], list[str]]] = []
+        cv_signals = self._extract_cv_signals(text)
+        matched_requirements = [kw for kw in requirement_terms if kw in content]
+        missing_requirements = [kw for kw in requirement_terms if kw not in content]
+        requirement_fit_percent = int((len(matched_requirements) / max(1, len(requirement_terms))) * 100) if requirement_terms else 0
+
+        scored_profiles: list[tuple[str, int, list[str], list[str], list[str]]] = []
         for profile, role_keywords in self.profile_map.items():
             matched_cv = [kw for kw in role_keywords if kw in content]
-            matched_target = [kw for kw in role_keywords if kw in target_blob]
             matched_skills = [kw for kw in role_keywords if kw in skills]
+            matched_to_target = [kw for kw in role_keywords if kw in requirement_terms]
+            cv_target_overlap = [kw for kw in matched_cv if kw in requirement_terms]
 
-            score = len(matched_cv) * 14 + len(matched_target) * 16 + len(matched_skills) * 12
+            evidence_bonus = min(12, cv_signals["quantified_impact_count"] * 2) + min(10, cv_signals["achievement_evidence_count"])
+            score = (len(matched_cv) * 16) + (len(cv_target_overlap) * 11) + (len(matched_skills) * 6) + (len(matched_to_target) * 5) + evidence_bonus
+
             if score > 0:
-                reason_terms = (matched_cv + matched_target + matched_skills)[:6]
-                missing = [kw for kw in role_keywords if kw not in set(matched_cv + matched_skills)][:6]
-                scored_profiles.append((profile, score, reason_terms, missing, matched_cv[:8], matched_target[:8]))
+                reasons = list(dict.fromkeys((cv_target_overlap + matched_cv + matched_skills)))[:8]
+                missing = [kw for kw in role_keywords if kw not in set(matched_cv + matched_skills)][:8]
+                scored_profiles.append((profile, score, reasons, missing, matched_cv[:8]))
 
         scored_profiles.sort(key=lambda pair: pair[1], reverse=True)
 
         if not scored_profiles:
             return {
                 "recommended_professions": ["General Professional Role"],
-                "profession_scores": [{"name": "General Professional Role", "score": 58, "reason": "Profile signals are broad; add role-specific achievements and keywords."}],
-                "missing_for_top": ["measurable achievements", "role-specific tools", "certification", "impact metrics"],
-                "transferable_strengths": [],
-                "target_alignment": "No strong alignment could be measured against a specific target role.",
-                "cv_strengths_for_target": ["General communication potential"],
-                "cv_gaps_for_target": ["Target role keywords", "job-specific tools", "quantified impact"],
+                "profession_scores": [{"name": "General Professional Role", "score": 55, "reason": "Insufficient role-specific evidence found in CV text."}],
+                "missing_for_top": ["role-specific tools", "project outcomes", "quantified impact"],
+                "transferable_strengths": cv_signals["soft_signals"],
+                "target_alignment": "Unable to confidently map your CV to a specific target role due to limited evidence.",
+                "target_fit_percent": max(45, requirement_fit_percent),
+                "cv_strengths_for_target": ["General profile detected"],
+                "cv_gaps_for_target": missing_requirements[:6] or ["target role keywords", "project depth", "impact metrics"],
+                "alternative_role": "Business Analyst",
+                "cv_signal_quality": cv_signals,
                 "research_query": (research or {}).get("query", ""),
                 "research_source": (research or {}).get("source", ""),
             }
 
         top = scored_profiles[:3]
-        max_score = max(score for _, score, _, _, _, _ in top)
+        max_score = max(score for _, score, _, _, _ in top)
 
         profession_scores: list[dict[str, Any]] = []
-        for name, score, reason_terms, _, _, _ in top:
-            pct = int(58 + ((score / max_score) * 39)) if max_score > 0 else 58
-            pct = max(55, min(98, pct))
-            signal = ", ".join(reason_terms[:5]) if reason_terms else "broad role alignment"
-            reason = f"Signals aligned with CV + target context: {signal}."
-            profession_scores.append({"name": name, "score": pct, "reason": reason})
+        for name, score, reason_terms, _, matched_cv in top:
+            normalized = int((score / max_score) * 100) if max_score else 55
+            fit = int((normalized * 0.75) + (requirement_fit_percent * 0.25)) if requirement_terms else normalized
+            fit = max(48, min(97, fit))
+            signal = ", ".join((reason_terms or matched_cv)[:6]) or "general domain alignment"
+            profession_scores.append({"name": name, "score": fit, "reason": f"CV evidence aligns with {name} through: {signal}."})
 
-        top_profile, _, _, top_missing, top_cv_hits, top_target_hits = top[0]
+        best_role = profession_scores[0]["name"]
+        best_score = profession_scores[0]["score"]
 
-        transfer_hits = [
-            label
-            for label, words in transferable_keywords.items()
-            if any(word in content for word in words)
-        ]
+        title_terms = [t for t in re.findall(r"[a-zA-Z][a-zA-Z+.#/-]{2,}", target_job_title) if t not in stop_words]
+        target_profile = ""
+        if title_terms:
+            ranked_targets = sorted(
+                self.profile_map.keys(),
+                key=lambda profile: sum(1 for term in title_terms if term in profile.lower() or term in " ".join(self.profile_map[profile])),
+                reverse=True,
+            )
+            if ranked_targets:
+                target_profile = ranked_targets[0]
 
-        alignment_ratio = len(set(top_cv_hits).intersection(set(top_target_hits))) / max(1, len(set(top_target_hits)))
-        alignment_percent = int(alignment_ratio * 100)
+        target_role_score = None
+        if target_profile:
+            for entry in profession_scores:
+                if entry["name"] == target_profile:
+                    target_role_score = entry["score"]
+                    break
+
+        if target_role_score is None:
+            target_role_score = int((requirement_fit_percent * 0.8) + min(20, cv_signals["quantified_impact_count"] * 3 + cv_signals["achievement_evidence_count"]))
+
+        target_role_score = max(35, min(96, target_role_score))
+
         target_alignment = (
-            f"Alignment with your target track ({top_profile}) is about {alignment_percent}%. "
-            "This is based on overlap between CV evidence and the target role requirements you entered."
+            f"Target role fit is {target_role_score}% based on matched requirements ({len(matched_requirements)}) vs missing requirements ({len(missing_requirements)}), "
+            f"plus evidence quality signals from the CV."
         )
 
-        cv_gaps_for_target = top_missing[:5] if top_missing else ["quantified achievements", "role-specific portfolio"]
-        cv_strengths_for_target = top_cv_hits[:5] if top_cv_hits else ["general professional experience"]
+        cv_strengths = list(dict.fromkeys(top[0][4] + matched_requirements))[:6]
+        cv_gaps = list(dict.fromkeys(missing_requirements + top[0][3]))[:6]
+        evidence_lines = self._extract_evidence_snippets(text, cv_strengths + matched_requirements, limit=3)
+
+        if target_role_score >= 78:
+            alternative_role = "Not required — target role already matches strongly"
+        else:
+            alternative_candidates = [item["name"] for item in profession_scores if item["name"] != target_profile and item["score"] >= 60]
+            alternative_role = alternative_candidates[0] if alternative_candidates else best_role
 
         return {
             "recommended_professions": [item[0] for item in top],
             "profession_scores": profession_scores,
-            "missing_for_top": top_missing,
-            "transferable_strengths": transfer_hits[:4],
+            "missing_for_top": top[0][3],
+            "transferable_strengths": cv_signals["soft_signals"][:5],
             "target_alignment": target_alignment,
-            "cv_strengths_for_target": cv_strengths_for_target,
-            "cv_gaps_for_target": cv_gaps_for_target,
+            "target_fit_percent": target_role_score,
+            "cv_strengths_for_target": cv_strengths or ["role-relevant terminology"],
+            "cv_gaps_for_target": cv_gaps or ["quantified outcomes", "role-specific portfolio"],
+            "matched_requirements": matched_requirements[:10],
+            "missing_requirements": missing_requirements[:10],
+            "alternative_role": alternative_role,
+            "cv_signal_quality": cv_signals,
+            "evidence_lines": evidence_lines,
             "target_job_title": profile_context.get("target_job_title") or "",
             "research_query": (research or {}).get("query", ""),
             "research_source": (research or {}).get("source", ""),
         }
 
-    def _extract_json_object(self, content: str) -> dict[str, Any] | None:
-        content = (content or "").strip()
-        if not content:
-            return None
-
-        try:
-            parsed = json.loads(content)
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            pass
-
-        match = re.search(r"\{[\s\S]*\}", content)
-        if not match:
-            return None
-
-        try:
-            parsed = json.loads(match.group(0))
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            return None
-
-    def _generate_openai_analysis(
-        self,
-        cv_text: str,
-        profile_context: dict[str, str],
-        research: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        api_key = self.openai_api_key.strip()
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is missing. Add it in backend/.env or Railway variables, then restart/redeploy.")
-
-        model = self.openai_model
-        target_title = (profile_context.get("target_job_title") or "").strip()
-        target_desc = (profile_context.get("target_job_description") or "").strip()
-        skills = (profile_context.get("skills") or "").strip()
-
-        prompt = (
-            "Analyze this CV against the target role. Return STRICT JSON only, no markdown. "
-            "Be truthful and evidence-based; if evidence is weak, state that. "
-            "JSON schema: "
-            "{"
-            '"classification": string,'
-            '"summary": string (bullet list with newline separators, each line starts with '- '),'
-            '"target_alignment": string,'
-            '"cv_strengths_for_target": string[],'
-            '"cv_gaps_for_target": string[],'
-            '"transferable_strengths": string[],'
-            '"missing_for_top": string[],'
-            '"recommended_professions": string[] (3 items max),'
-            '"profession_scores": [{"name": string, "score": number 0-100, "reason": string}] (3 items max)'
-            "}."
-            " Ensure profession_scores reflect CV evidence and target context.\n\n"
-            f"Target Job Title: {target_title or 'Not provided'}\n"
-            f"Target Job Description: {target_desc or 'Not provided'}\n"
-            f"Skills entered by user: {skills or 'Not provided'}\n"
-            f"Web research context: {(research or {}).get('summary', '')}\n"
-            f"CV Text (truncated):\n{cv_text[:3800]}"
-        )
-
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "You are a precise career-analysis assistant. Output valid JSON only."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-        }
-
-        request = Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-            method="POST",
-        )
-
-        try:
-            with urlopen(request, timeout=35) as response:  # noqa: S310
-                result = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="ignore")
-            try:
-                details = json.loads(body)
-                message = str(details.get("error", {}).get("message") or "").strip()
-            except Exception:
-                message = ""
-
-            status_code = getattr(exc, "code", 0)
-            if status_code == 401:
-                raise RuntimeError("OpenAI rejected the API key (401). Create a new valid key and set OPENAI_API_KEY.") from exc
-            if status_code == 429:
-                raise RuntimeError("OpenAI quota/rate-limit reached (429). Check billing/usage and retry in a minute.") from exc
-            if status_code == 400 and "model" in message.lower():
-                raise RuntimeError(f"OpenAI model error: {message}. Set OPENAI_MODEL to a valid model (example: gpt-4o-mini).") from exc
-            raise RuntimeError(f"OpenAI request failed ({status_code}). {message or 'Check API key, model, and billing.'}") from exc
-        except URLError as exc:
-            raise RuntimeError("Network error while calling OpenAI. Check internet access/firewall and retry.") from exc
-        except Exception as exc:
-            raise RuntimeError("Unexpected error while contacting OpenAI. Check backend logs and retry.") from exc
-
-        content = (
-            result.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        parsed = self._extract_json_object(content)
-        if not parsed:
-            raise RuntimeError("ChatGPT returned an invalid JSON format. Please retry.")
-
-        scores = parsed.get("profession_scores") or []
-        cleaned_scores: list[dict[str, Any]] = []
-        for item in scores[:3]:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "").strip()
-            reason = str(item.get("reason") or "").strip()
-            raw_score = item.get("score", 0)
-            try:
-                numeric = int(float(raw_score))
-            except Exception:
-                numeric = 0
-            numeric = max(0, min(100, numeric))
-            if name:
-                cleaned_scores.append({"name": name, "score": numeric, "reason": reason or "CV-to-role match generated from AI analysis."})
-
-        summary = str(parsed.get("summary") or "").strip()
-        if summary:
-            lines = [line.strip() for line in summary.splitlines() if line.strip()]
-            summary = "\n".join(line if line.startswith("- ") else f"- {line.lstrip('- ').strip()}" for line in lines)
-
-        output = {
-            "classification": str(parsed.get("classification") or "CV"),
-            "summary": summary,
-            "target_alignment": str(parsed.get("target_alignment") or ""),
-            "cv_strengths_for_target": [str(x).strip() for x in (parsed.get("cv_strengths_for_target") or []) if str(x).strip()][:6],
-            "cv_gaps_for_target": [str(x).strip() for x in (parsed.get("cv_gaps_for_target") or []) if str(x).strip()][:6],
-            "transferable_strengths": [str(x).strip() for x in (parsed.get("transferable_strengths") or []) if str(x).strip()][:6],
-            "missing_for_top": [str(x).strip() for x in (parsed.get("missing_for_top") or []) if str(x).strip()][:6],
-            "recommended_professions": [str(x).strip() for x in (parsed.get("recommended_professions") or []) if str(x).strip()][:3],
-            "profession_scores": cleaned_scores,
-        }
-
-        if not output["profession_scores"] or not output["recommended_professions"] or not output["summary"]:
-            raise RuntimeError("ChatGPT response missed required fields. Please retry.")
-
-        return output
-
-
     def _compose_career_summary(self, career: dict[str, Any], profile_context: dict[str, str], research: dict[str, Any] | None = None) -> str:
-        top_roles = career.get("recommended_professions", [])[:2]
+        top_roles = career.get("recommended_professions", [])[:3]
         top_scores = career.get("profession_scores", [])
-        strengths = career.get("transferable_strengths", [])
         cv_strengths = career.get("cv_strengths_for_target", [])[:5]
-        cv_gaps = career.get("cv_gaps_for_target", [])[:5]
+        matched_requirements = career.get("matched_requirements", [])[:6]
+        missing_requirements = career.get("missing_requirements", [])[:6]
+        alternative_role = career.get("alternative_role", "General Professional Role")
 
-        target_job_title = (profile_context.get("target_job_title") or "").strip()
-        target_job_description = (profile_context.get("target_job_description") or "").strip()
-        skills = (profile_context.get("skills") or "").strip()
+        target_job_title = (profile_context.get("target_job_title") or "").strip() or "your target role"
+        top_score = top_scores[0]["score"] if top_scores else 55
+        top_role = top_scores[0]["name"] if top_scores else "General Professional Role"
 
-        top_score = top_scores[0]["score"] if top_scores else 58
-        readiness = "High" if top_score >= 85 else "Moderate" if top_score >= 70 else "Early-stage"
+        target_fit = career.get("target_fit_percent", top_score)
+        readiness = "Strong" if target_fit >= 82 else "Promising" if target_fit >= 68 else "Needs Improvement"
 
-        research_summary = ((research or {}).get("summary") or "").strip()
-        research_source = ((research or {}).get("source") or "").strip()
-        research_expectations = (research or {}).get("key_expectations") or []
+        cv_signal_quality = career.get("cv_signal_quality", {})
+        evidence_lines = career.get("evidence_lines", [])[:2]
+        years = cv_signal_quality.get("years_experience", 0)
+        impacts = cv_signal_quality.get("quantified_impact_count", 0)
+        project_flag = cv_signal_quality.get("has_projects", False)
+        cert_flag = cv_signal_quality.get("has_certifications", False)
+
+        recommendation_steps: list[str] = []
+        if impacts < 2:
+            recommendation_steps.append("Add 3–5 quantified achievement bullets (percent improvements, time saved, growth) under recent roles")
+        if not project_flag:
+            recommendation_steps.append("Add a projects section that mirrors the target role stack and business outcomes")
+        if missing_requirements:
+            recommendation_steps.append(f"Close the most important requirement gaps first: {', '.join(missing_requirements[:3])}")
+        if not cert_flag and top_score < 75:
+            recommendation_steps.append("Add one role-relevant certification to strengthen credibility")
+        if years <= 1:
+            recommendation_steps.append("Prepare portfolio walkthroughs and STAR interview stories to compensate for limited experience")
+
+        if not recommendation_steps:
+            recommendation_steps.append("Focus on interview depth: prepare technical trade-off explanations and impact stories for each key project")
+
+        top_matches_text = ", ".join(f"{item['name']} ({item['score']}%)" for item in top_scores[:3]) if top_scores else ", ".join(top_roles)
 
         bullets = [
-            f"- Target Role: {target_job_title if target_job_title else 'Not provided explicitly; inferred from CV and job description context.'}",
-            f"- Interview Readiness: {readiness} ({top_score}% match based on CV evidence vs target requirements).",
-            f"- Best Role Matches: {', '.join(top_roles) if top_roles else 'No strong role detected yet.'}",
-            f"- CV Strengths for this target: {', '.join(cv_strengths) if cv_strengths else 'General transferable strengths only; add stronger role-specific proof.'}",
-            f"- Main Gaps to fix: {', '.join(cv_gaps) if cv_gaps else 'Quantified achievements, domain tools, and portfolio depth.'}",
-            f"- Transferable Signals Detected: {', '.join(strengths) if strengths else 'Communication/ownership evidence should be strengthened in CV bullets.'}",
-            f"- Job Description Coverage: {target_job_description[:320] if target_job_description else 'No job description provided; include one for precise requirement matching.'}",
-            "- Action Plan: (1) Rewrite bullets with measurable impact, (2) align skills section to job requirements, (3) add relevant projects/certifications, (4) tailor CV headline to target title, (5) prepare interview stories proving each requirement.",
-            f"- Skills Used in Analysis: {skills if skills else 'No explicit skills entered.'}",
-            f"- Alignment Verdict: {career.get('target_alignment', 'Alignment could not be measured reliably.')}",
+            f"- Target Role Analysed: {target_job_title}.",
+            f"- Fit Decision: {readiness} fit ({target_fit}%). The closest evidence-backed role from your CV is {top_role}.",
+            f"- Top Role Matches: {top_matches_text}.",
+            f"- Strongest Evidence Found in CV: {', '.join(cv_strengths) if cv_strengths else 'role-relevant terms were limited in the uploaded CV text'}.",
+            f"- CV Evidence Lines: {' | '.join(evidence_lines) if evidence_lines else 'Add achievement-focused bullets so evidence extraction can cite stronger proof lines.'}.",
+            f"- Requirement Coverage: matched -> {', '.join(matched_requirements) if matched_requirements else 'few explicit matches'}; missing -> {', '.join(missing_requirements) if missing_requirements else 'no major requirement gaps detected'}.",
+            f"- Alternative Role Recommendation: {alternative_role}.",
+            f"- Immediate Improvement Plan: {'; '.join(recommendation_steps)}.",
         ]
 
+        research_summary = ((research or {}).get("summary") or "").strip()
         if research_summary:
-            bullets.append(f"- External Role Research: {research_summary}")
-        if research_expectations:
-            bullets.append(f"- Public Research Expectations: {'; '.join(research_expectations[:4])}.")
-        if research_source:
-            bullets.append(f"- Research Sources: {research_source}")
+            bullets.append(f"- Market Context Signal: {research_summary[:260]}.")
 
         return "\n".join(bullets).strip()
 

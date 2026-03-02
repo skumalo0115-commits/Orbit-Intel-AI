@@ -62,6 +62,11 @@ def analyze_document(
         result = ai_pipeline.analyze(text_content, profile_context=profile_context)
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Analysis engine encountered an internal error: {exc}",
+        ) from exc
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
     if not record:
         record = Analysis(document_id=doc.id)
