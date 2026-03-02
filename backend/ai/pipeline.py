@@ -109,6 +109,8 @@ class AIPipeline:
                     fallback_reason = "OpenAI response missed profession matches; used built-in analysis fallback."
             except RuntimeError as exc:
                 fallback_reason = f"OpenAI unavailable ({exc}); used built-in analysis fallback."
+            except Exception as exc:  # noqa: BLE001
+                fallback_reason = f"OpenAI integration error ({exc}); used built-in analysis fallback."
         else:
             fallback_reason = "OPENAI_API_KEY not configured; used built-in analysis fallback."
 
@@ -369,7 +371,7 @@ class AIPipeline:
             "JSON schema: "
             "{"
             '"classification": string,'
-            '"summary": string (bullet list with newline separators, each line starts with '- '),'
+            '"summary": string (bullet list with newline separators, each line starts with - ),'
             '"target_alignment": string,'
             '"cv_strengths_for_target": string[],'
             '"cv_gaps_for_target": string[],'
