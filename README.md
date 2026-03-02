@@ -146,12 +146,18 @@ Deliver fast, clear, and actionable AI career intelligence that helps users beco
 
 ## 🚂 Deploy to Railway (Step by Step)
 
-1. Push this repository to GitHub.
-2. In Railway, create a **New Project** → **Deploy from GitHub Repo**.
-3. Add environment variables in Railway service settings:
-   - `SECRET_KEY`
-   - `DATABASE_URL`
-4. Deploy and open your service URL.
-5. Run a quick readiness check: `GET /env-check`
-   - `ready: true` means required variables are present.
-6. Upload a CV and open Analysis page to confirm role matches and summary output.
+Use the dedicated deployment guide:
+
+- See `RAILWAY_DEPLOYMENT.md` for exact cleanup commands, variables, and verification steps (includes PowerShell-safe cleanup + fix for "The system cannot find the file specified").
+
+Quick checklist:
+1. Push repository to GitHub.
+2. In Railway: New Project -> Deploy from GitHub Repo.
+3. Add PostgreSQL plugin.
+4. Set web service variables: `SECRET_KEY`, `DATABASE_URL`.
+5. Deploy and verify `/env-check` returns `ready: true`.
+6. Upload CV and open Analysis page.
+
+
+### Railway build-detection note
+If Railway shows `Railpack could not determine how to build the app`, redeploy after pulling the latest commit that adds `railway.toml`, `build.sh`, `start.sh`, and root `requirements.txt`.
