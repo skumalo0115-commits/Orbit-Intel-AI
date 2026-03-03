@@ -15,7 +15,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication")
 
-    user = db.query(User).filter(User.email == subject).first()
+    user = db.query(User).filter((User.username == subject) | (User.email == subject)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
