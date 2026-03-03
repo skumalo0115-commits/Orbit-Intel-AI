@@ -45,23 +45,23 @@ function JobSearchDropdown({
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredJobs = useMemo(() => {
-    if (!searchTerm) return jobs
+    if (!searchTerm) return jobs.slice(0, 50) // Show first 50 jobs when no search
     const term = searchTerm.toLowerCase()
-    return jobs.filter((job) => job.toLowerCase().includes(term))
+    return jobs.filter((job) => job.toLowerCase().includes(term)).slice(0, 50)
   }, [jobs, searchTerm])
 
   const selectedJob = value
 
   return (
     <div className="relative">
-      <div className="relative flex items-center">
+      <div className="relative">
         <Search className="absolute left-3 text-violet-300" size={20} style={{ top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
-          value={selectedJob || searchTerm}
+          value={selectedJob}
           onChange={(e) => {
             setSearchTerm(e.target.value)
-            setIsOpen(true)
+            // Don't set isOpen(true) on typing - only on focus
             if (!e.target.value) {
               onChange('')
             }
@@ -69,7 +69,8 @@ function JobSearchDropdown({
           onFocus={() => setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
           className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 pl-10 text-base md:text-lg mb-3"
-          placeholder="Search for a job title..."
+          placeholder="Click to search job titles..."
+          autoComplete="off"
         />
         {selectedJob && (
           <button
@@ -196,9 +197,10 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const recoverUploadedDocument = async (filename: string, existingDocIds: Set<number>) => {
     setStatusMessage('Finalising upload...')
 
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    // Reduced retries for faster recovery (3 attempts instead of 8)
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 60000 })
+        const refresh = await api.get<DocumentItem[]>('/documents', { timeout: 30000 })
         const latestDocs = Array.isArray(refresh.data) ? refresh.data : []
         const recoveredByName = latestDocs.find((doc) => doc.filename === filename)
         const recoveredByNewId = latestDocs.find((doc) => !existingDocIds.has(doc.id))
@@ -219,7 +221,8 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         // Keep retrying below.
       }
 
-      await sleep(Math.min(2500 * (attempt + 1), 12000))
+      // Reduced sleep time for faster retries
+      await sleep(Math.min(1000 * (attempt + 1), 3000))
     }
 
     return false

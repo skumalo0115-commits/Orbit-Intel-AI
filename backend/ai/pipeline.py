@@ -11,35 +11,169 @@ class AIPipeline:
 
     def __init__(self) -> None:
         self.profile_map: dict[str, list[str]] = {
+            # Technology & Software
             "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++", "software", "backend", "frontend"],
-            "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting", "dashboard", "kpi", "data cleaning"],
-            "Data Scientist": ["machine learning", "tensorflow", "pytorch", "statistics", "pandas", "model", "ai", "nlp"],
+            "Full Stack Developer": ["html", "css", "javascript", "react", "angular", "vue", "node", "express", "mongodb", "sql", "rest api"],
+            "Frontend Developer": ["html", "css", "javascript", "react", "angular", "vue", "typescript", "responsive design", "ui"],
+            "Backend Developer": ["java", "python", "node", "django", "spring", "express", "api", "database", "sql", "nosql"],
+            "Mobile App Developer": ["react native", "flutter", "ios", "android", "swift", "kotlin", "mobile", "app development"],
             "DevOps Engineer": ["docker", "kubernetes", "ci/cd", "jenkins", "linux", "terraform", "aws", "azure", "gcp"],
             "Cloud Engineer": ["aws", "azure", "gcp", "cloud", "infrastructure", "network", "iam", "serverless"],
+            "Cloud Architect": ["cloud architecture", "aws", "azure", "gcp", "kubernetes", "terraform", "infrastructure as code", "microservices"],
+            "Site Reliability Engineer": ["sre", "monitoring", "logging", "kubernetes", "docker", "incident response", "automation", "on-call"],
+            "Systems Engineer": ["systems", "linux", "windows server", "networking", "vmware", "virtualization", "automation"],
+            "Network Engineer": ["networking", "cisco", "firewall", "vpn", "lan", "wan", "routing", "switching", "tcp/ip"],
             "Cybersecurity Analyst": ["security", "soc", "siem", "risk", "vulnerability", "incident response", "iso 27001", "compliance"],
+            "Security Engineer": ["penetration testing", "security", "firewall", "encryption", "siem", "vulnerability assessment", "ethical hacking"],
+            "Information Security Manager": ["information security", "compliance", "iso 27001", "risk management", "security policy", "governance"],
+            # Data & Analytics
+            "Data Analyst": ["sql", "excel", "power bi", "tableau", "analytics", "reporting", "dashboard", "kpi", "data cleaning"],
+            "Data Scientist": ["machine learning", "tensorflow", "pytorch", "statistics", "pandas", "model", "ai", "nlp"],
+            "Data Engineer": ["etl", "spark", "hadoop", "airflow", "data pipeline", "sql", "python", "aws", "data warehouse"],
+            "Business Intelligence Analyst": ["bi", "tableau", "power bi", "sql", "data warehousing", "reporting", "analytics", "visualization"],
+            "Machine Learning Engineer": ["machine learning", "tensorflow", "pytorch", "python", "deep learning", "ml", "ai", "model deployment"],
+            "AI Engineer": ["artificial intelligence", "machine learning", "deep learning", "tensorflow", "pytorch", "nlp", "computer vision"],
+            "Database Administrator": ["database", "mysql", "postgresql", "sql server", "mongodb", "backup", "performance tuning", "security"],
+            # Engineering
             "QA Engineer": ["testing", "qa", "selenium", "cypress", "test cases", "automation", "quality assurance"],
+            "QA Automation Engineer": ["automation testing", "selenium", "cypress", "test automation", "python", "java", "ci/cd", "api testing"],
             "UI/UX Designer": ["figma", "wireframe", "prototype", "ux", "ui", "design system", "user research"],
+            "Product Designer": ["product design", "figma", "sketch", "ux", "ui", "prototyping", "design thinking", "user experience"],
             "Electrical Engineer": ["electrical", "circuit", "power systems", "autocad", "plc", "renewable", "instrumentation"],
             "Mechanical Engineer": ["mechanical", "cad", "solidworks", "manufacturing", "thermodynamics", "maintenance"],
             "Civil Engineer": ["civil", "structural", "construction", "survey", "autocad", "infrastructure", "site"],
+            "Chemical Engineer": ["chemical", "process", "chemistry", "manufacturing", "plant", "safety", "thermodynamics"],
+            "Aerospace Engineer": ["aerospace", "aircraft", "propulsion", "aerodynamics", "cad", "matlab", "systems"],
+            # Business & Management
             "Project Manager": ["project management", "pmp", "scrum", "stakeholder", "risk management", "timeline", "budget"],
             "Product Manager": ["product", "roadmap", "user story", "stakeholder", "market research", "go-to-market", "backlog"],
+            "Program Manager": ["program management", "portfolio", "stakeholder", "strategy", "coordination", "governance"],
+            "Scrum Master": ["scrum", "agile", "sprint", "kanban", "facilitation", "team lead", "ceremonies"],
             "Business Analyst": ["business analysis", "requirements", "process mapping", "uml", "sql", "stakeholder", "gap analysis"],
-            "Operations Specialist": ["operations", "supply chain", "logistics", "process improvement", "lean", "inventory", "procurement"],
-            "Procurement Specialist": ["procurement", "vendor", "sourcing", "rfq", "negotiation", "contract management", "supply"],
+            "Functional Analyst": ["functional analysis", "requirements", "business process", "stakeholder", "specifications", "testing"],
+            "Technical Analyst": ["technical analysis", "requirements", "system design", "architecture", "stakeholder", "documentation"],
+            # Finance & Accounting
             "Financial Analyst": ["finance", "accounting", "budget", "forecast", "valuation", "financial modelling", "excel"],
             "Accountant": ["accounting", "bookkeeping", "reconciliation", "payroll", "tax", "ifrs", "ledger"],
             "Auditor": ["audit", "internal controls", "compliance", "risk", "financial statements", "sox"],
+            "Management Accountant": ["management accounting", "cost accounting", "budgeting", "forecasting", "variance analysis"],
+            "Tax Specialist": ["tax", "taxation", "corporate tax", "vat", "tax compliance", "tax planning"],
+            "Credit Analyst": ["credit analysis", "risk assessment", "financial statements", "credit reports", "lending"],
+            # Operations & Supply Chain
+            "Operations Specialist": ["operations", "supply chain", "logistics", "process improvement", "lean", "inventory", "procurement"],
+            "Procurement Specialist": ["procurement", "vendor", "sourcing", "rfq", "negotiation", "contract management", "supply"],
+            "Supply Chain Manager": ["supply chain", "logistics", "inventory", "forecasting", "supplier management", "operations"],
+            "Logistics Coordinator": ["logistics", "shipping", "freight", "warehouse", "inventory", "transportation", "dispatch"],
+            "Warehouse Manager": ["warehouse", "inventory", "logistics", "operations", "stock management", "fulfillment"],
+            # Sales & Marketing
             "Marketing Specialist": ["marketing", "seo", "campaign", "branding", "social media", "google ads", "content"],
+            "Digital Marketing Specialist": ["digital marketing", "seo", "sem", "google ads", "facebook ads", "analytics", "content marketing"],
+            "Content Marketing Manager": ["content marketing", "content strategy", "blogging", "seo", "social media", "content creation"],
+            "Social Media Manager": ["social media", "facebook", "instagram", "twitter", "linkedin", "content", "community management"],
             "Sales Representative": ["sales", "lead generation", "crm", "negotiation", "pipeline", "client acquisition"],
+            "Account Executive": ["account management", "sales", "client relationships", "business development", "negotiation"],
+            "Business Development Manager": ["business development", "sales", "partnerships", "lead generation", "client acquisition", "strategy"],
+            # Customer Service
             "Customer Success Manager": ["customer success", "onboarding", "retention", "account management", "nps", "client support"],
+            "Customer Support Specialist": ["customer support", "helpdesk", "ticket resolution", "communication", "problem solving"],
+            "Call Center Manager": ["call center", "customer service", "team management", "operations", "performance metrics"],
+            # Human Resources
             "HR Specialist": ["human resources", "recruitment", "talent acquisition", "onboarding", "employee relations", "hris"],
+            "HR Manager": ["human resources", "hr management", "employee relations", "recruitment", "performance management", "policy"],
+            "Recruiter": ["recruitment", "talent acquisition", "hiring", "interviewing", "candidate", "job posting", "sourcing"],
+            "Talent Acquisition Specialist": ["talent acquisition", "recruitment", "sourcing", "candidate", "headhunting", "employer branding"],
+            # Administrative
             "Administrative Officer": ["administration", "scheduling", "documentation", "office management", "coordination", "support"],
             "Executive Assistant": ["calendar", "executive support", "meeting coordination", "travel", "minutes", "stakeholder communication"],
+            "Office Manager": ["office management", "administration", "facilities", "team support", "operations", "coordination"],
+            "Receptionist": ["reception", "front desk", "customer service", "phone handling", "appointment scheduling"],
+            # Legal
             "Legal Associate": ["legal", "contract", "compliance", "litigation", "case", "regulatory"],
+            "Legal Counsel": ["legal counsel", "corporate law", "contracts", "compliance", "risk", "advisory"],
+            "Compliance Officer": ["compliance", "regulatory", "risk", "policy", "auditing", "governance", "legal"],
+            # Healthcare
             "Healthcare Professional": ["patient", "clinical", "healthcare", "nursing", "medical", "treatment", "hospital"],
+            "Medical Administrator": ["medical", "healthcare administration", "patient records", "scheduling", "compliance", "billing"],
+            "Clinical Research Coordinator": ["clinical research", "trials", "patient", "compliance", "data collection", "regulatory"],
+            # Education
             "Teacher / Educator": ["teaching", "curriculum", "classroom", "education", "assessment", "lesson planning"],
+            "Instructional Designer": ["instructional design", "e-learning", "curriculum", "training", "content development", "addie"],
+            "Education Administrator": ["education", "administration", "school", "student services", "curriculum", "management"],
+            # Research & Science
             "Research Analyst": ["research", "methodology", "literature", "analysis", "report writing", "survey"],
+            "Research Scientist": ["research", "scientific", "laboratory", "data analysis", "methodology", "publications"],
+            "Laboratory Technician": ["laboratory", "testing", "sample", "equipment", "quality control", "scientific"],
+            # Media & Creative
+            "Graphic Designer": ["graphic design", "photoshop", "illustrator", "design", "branding", "visual", "creative"],
+            "Video Editor": ["video editing", "premiere", "after effects", "final cut", "motion graphics", "post-production"],
+            "Copywriter": ["copywriting", "content writing", "advertising", "creative writing", "marketing", "branding"],
+            "Content Creator": ["content creation", "video", "social media", "blog", "storytelling", "creative"],
+            # Other Professions
+            "Consultant": ["consulting", "advisory", "strategy", "problem solving", "analysis", "recommendations"],
+            "Strategy Consultant": ["strategy", "consulting", "business strategy", "analysis", "transformation", "advisory"],
+            "Technical Writer": ["technical writing", "documentation", "user guides", "api documentation", "manuals", "writing"],
+            "Virtual Assistant": ["virtual assistant", "administrative", "scheduling", "email management", "support", "remote"],
+        }
+
+        # Study recommendations for each job profile - what to learn/improve
+        self.study_recommendations: dict[str, list[str]] = {
+            "Software Engineer": ["Data Structures & Algorithms", "System Design", "Git Version Control", "SQL & Databases", "API Design Patterns", "Design Patterns", "Agile Methodology"],
+            "Full Stack Developer": ["React/Vue Framework", "Node.js Backend", "Database Design", "RESTful APIs", "CSS Frameworks", "Git", "Cloud Deployment"],
+            "Frontend Developer": ["JavaScript/TypeScript", "React/Angular/Vue", "CSS Advanced", "Web Performance", "Accessibility WCAG", "State Management", "Testing"],
+            "Backend Developer": ["Java Spring/Python Django", "API Development", "Database Design", "Authentication Security", "Caching", "Message Queues", "Docker"],
+            "Mobile App Developer": ["React Native/Flutter", "iOS Swift/Android Kotlin", "Mobile UI Design", "Backend Integration", "App Store Deployment", "State Management", "Offline Capabilities"],
+            "DevOps Engineer": ["Docker/Kubernetes", "CI/CD Pipelines", "Terraform/CloudFormation", "AWS/Azure/GCP", "Scripting", "Monitoring", "Infrastructure Security"],
+            "Cloud Engineer": ["AWS Solutions Architect", "Azure Administrator", "Cloud Networking", "Serverless", "Cloud Security", "Cost Management", "Automation"],
+            "Data Analyst": ["SQL Advanced", "Power BI/Tableau", "Excel Expert", "Data Visualization", "Statistics", "ETL", "Python/R"],
+            "Data Scientist": ["Python/R", "Machine Learning", "TensorFlow/PyTorch", "Statistics", "NLP", "Data Visualization", "Model Deployment"],
+            "Machine Learning Engineer": ["ML Algorithms", "Deep Learning", "ML Ops", "Feature Engineering", "Model Optimization", "Computer Vision", "NLP"],
+            "AI Engineer": ["Deep Learning", "Neural Networks", "NLP/Transformers", "Computer Vision", "LLM Fine-tuning", "AI Model Optimization", "Prompt Engineering"],
+            "Project Manager": ["PMP/CSM", "Agile/Scrum", "Risk Management", "Stakeholder Management", "Budgeting", "MS Project", "Communication"],
+            "Product Manager": ["Product Strategy", "User Research", "Roadmap Planning", "Analytics", "A/B Testing", "Agile", "Stakeholder Management"],
+            "Business Analyst": ["Requirements Analysis", "UML/BPMN", "SQL", "Process Mapping", "Jira/Confluence", "Agile", "Data Analysis"],
+            "Financial Analyst": ["Financial Modeling", "Excel VBA", "Valuation (DCF)", "Budgeting", "Power BI", "SQL", "Forecasting"],
+            "Accountant": ["IFRS/GAAP", "Tax Accounting", "QuickBooks/SAP", "Payroll", "Reconciliation", "Financial Reporting", "Auditing"],
+            "Marketing Specialist": ["Digital Marketing", "SEO/SEM", "Content Marketing", "Social Media", "Analytics", "Email Marketing", "Marketing Automation"],
+            "Sales Representative": ["CRM", "Negotiation", "Lead Generation", "Sales Process", "Cold Calling", "Account Management", "Sales Psychology"],
+            "Customer Success Manager": ["Onboarding", "Retention Strategies", "NPS", "Account Management", "Customer Psychology", "Upselling", "Churn Analysis"],
+            "HR Specialist": ["Recruitment", "Onboarding", "Employee Relations", "HRIS", "Performance Management", "Employment Law", "HR Analytics"],
+            "QA Engineer": ["Test Planning", "Bug Tracking", "Test Automation", "Selenium/Cypress", "API Testing", "Agile Testing", "Performance Testing"],
+            "UI/UX Designer": ["Figma/Sketch", "Wireframing", "User Research", "Prototyping", "Design Systems", "Accessibility", "Usability Testing"],
+            "Consultant": ["Problem Solving", "Analysis Frameworks", "Communication", "Industry Knowledge", "Implementation", "Change Management"],
+        }
+
+        # What skills employers look for (hard skills + soft skills) for each role
+        self.role_requirements: dict[str, dict] = {
+            "Software Engineer": {
+                "hard": ["programming", "algorithms", "data structures", "databases", "apis", "testing", "git"],
+                "soft": ["problem solving", "teamwork", "communication", "debugging", "time management"],
+                "certifications": ["AWS Certified Developer", "Google Cloud Developer", "Oracle Certified Java"]
+            },
+            "Data Analyst": {
+                "hard": ["sql", "excel", "tableau", "power bi", "statistics", "python", "data visualization"],
+                "soft": ["analytical thinking", "communication", "attention to detail", "presentation"],
+                "certifications": ["Google Data Analytics", "Microsoft Certified: Data Analyst", "Tableau Specialist"]
+            },
+            "Data Scientist": {
+                "hard": ["python", "machine learning", "statistics", "tensorflow", "pytorch", "sql", "deep learning"],
+                "soft": ["curiosity", "communication", "problem solving", "storytelling"],
+                "certifications": ["AWS Machine Learning", "Google ML", "IBM Data Science Professional"]
+            },
+            "Project Manager": {
+                "hard": ["project planning", "budgeting", "risk management", "agile", "scrum", "jira"],
+                "soft": ["leadership", "communication", "stakeholder management", "negotiation"],
+                "certifications": ["PMP", "CSM", "PRINCE2", "CAPM"]
+            },
+            "Marketing Specialist": {
+                "hard": ["seo", "sem", "content marketing", "analytics", "social media", "email marketing"],
+                "soft": ["creativity", "communication", "analytical thinking", "adaptability"],
+                "certifications": ["Google Ads", "HubSpot Inbound", "Facebook Blueprint"]
+            },
+            "Sales Representative": {
+                "hard": ["crm", "sales tools", "presentation", "product knowledge", "negotiation"],
+                "soft": ["communication", "persuasion", "resilience", "empathy", "time management"],
+                "certifications": ["Salesforce Administrator", "HubSpot Sales Pro"]
+            },
         }
 
     def analyze(self, text: str, profile_context: dict[str, str] | None = None) -> dict[str, Any]:

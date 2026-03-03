@@ -106,7 +106,6 @@ export default function AnalysisPage() {
       setIsLoading(true)
       setError(null)
       try {
-        let lastError: unknown = null
         let profileContext: ProfileContext = {}
         try {
           const raw = sessionStorage.getItem('dashboard_profile_context')
@@ -115,21 +114,9 @@ export default function AnalysisPage() {
           profileContext = {}
         }
 
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          try {
-            const response = await api.post<Analysis>(`/analyze/${documentId}`, profileContext, { timeout: 300000 })
-            setAnalysis(response.data)
-            lastError = null
-            break
-          } catch (innerErr) {
-            lastError = innerErr
-            if (attempt < 1) {
-              await new Promise((resolve) => setTimeout(resolve, 600))
-            }
-          }
-        }
-
-        if (lastError) throw lastError
+        // Single attempt with faster timeout for better mobile performance
+        const response = await api.post<Analysis>(`/analyze/${documentId}`, profileContext, { timeout: 180000 })
+        setAnalysis(response.data)
       } catch (err) {
         if (axios.isAxiosError(err)) {
           const detail = err.response?.data?.detail

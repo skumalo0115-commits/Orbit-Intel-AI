@@ -1,27 +1,27 @@
-# Implementation TODO List
+# Orbit Intel AI - Implementation TODO
 
-## Task: Dashboard Enhancements
+## Current Tasks
 
-### Backend
-- [x] Add `/jobs` API endpoint to return all available job titles
+### 1. Add More Jobs to Dropdown (backend/ai/pipeline.py)
+- [x] Understand current profile_map structure
+- [ ] Add more job titles (target: 60+ jobs)
+- [ ] Jobs will automatically appear in dropdown via /jobs endpoint
 
-### Frontend - DashboardPage.tsx
-- [x] Replace target job input with searchable dropdown
-- [x] Add job filtering as user types
-- [x] Maintain same input styling
+### 2. Fix Dropdown Behavior (frontend/src/pages/DashboardPage.tsx)
+- [x] Understand current JobSearchDropdown implementation
+- [ ] Modify to show dropdown only on click/focus (not when typing)
+- [ ] Ensure dropdown closes when clicking outside
 
-### Frontend - DocumentCard.tsx
-- [x] Add hover pop effect to Analyse button
-- [x] Add hover pop effect to Delete (X) button
-- [x] Implement instant UI removal for delete button
+### 3. Skip Upload & Analysis Process
+- [x] Understand current upload → analyze flow
+- [ ] Modify "Analyse Career Path" button to navigate directly to AnalysisPage
+- [ ] Store profile context in sessionStorage
+- [ ] Modify AnalysisPage to show quick analysis results without actual AI processing
+- [ ] Make the process faster by skipping document upload and analysis API calls
 
-### Frontend - SummaryPanel.tsx
-- [x] Create enhanced summary focused on target job
-- [x] Show CV-job match analysis
-- [x] Display recommendations on what to improve
-- [x] Show what to study
-- [x] Show what jobs to build experience for
-
-### Frontend - AnalysisPage.tsx
-- [x] Integrate SummaryPanel component
+## Implementation Notes
+- The dropdown pulls from backend /jobs endpoint
+- Current jobs: 28 job titles
+- Target: 60+ job titles for comprehensive coverage
+- Analysis should be instant with pre-computed/mock results when skipping upload
 
