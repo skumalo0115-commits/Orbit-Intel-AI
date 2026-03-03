@@ -54,8 +54,8 @@ function JobSearchDropdown({
 
   return (
     <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-300" size={20} />
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 text-violet-300" size={20} style={{ top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
           value={selectedJob || searchTerm}
@@ -68,7 +68,7 @@ function JobSearchDropdown({
           }}
           onFocus={() => setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-          className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 pl-10 text-lg mb-3"
+          className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 pl-10 text-base md:text-lg mb-3"
           placeholder="Search for a job title..."
         />
         {selectedJob && (
@@ -78,7 +78,8 @@ function JobSearchDropdown({
               onChange('')
               setSearchTerm('')
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-300 hover:text-white transition"
+            className="absolute right-3 text-violet-300 hover:text-white transition"
+            style={{ top: '50%', transform: 'translateY(-50%)' }}
           >
             <X size={18} />
           </button>
@@ -99,7 +100,7 @@ function JobSearchDropdown({
                   setSearchTerm('')
                   setIsOpen(false)
                 }}
-                className="w-full px-4 py-3 text-left text-white/90 hover:bg-violet-500/30 hover:text-white transition"
+                className="w-full px-4 py-3 text-left text-white/90 hover:bg-violet-500/30 hover:text-white transition text-base md:text-lg"
               >
                 {job}
               </button>
@@ -323,13 +324,13 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             </div>
 
             <label className="block text-lg mb-2 text-white/90">Skills & Expertise</label>
-            <input value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Python, JavaScript, React, Machine Learning..." />
+            <input value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-base md:text-lg mb-3" placeholder="e.g., Python, JavaScript, React..." />
 
             <label className="block text-lg mb-2 text-white/90">Target Job Title</label>
             <JobSearchDropdown value={targetJobTitle} onChange={setTargetJobTitle} jobs={availableJobs} />
 
             <label className="block text-lg mb-2 text-white/90">Target Job Description</label>
-            <textarea value={targetJobDescription} onChange={(e) => setTargetJobDescription(e.target.value)} className="w-full h-28 rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="Paste key responsibilities/requirements from the job description..." />
+            <textarea value={targetJobDescription} onChange={(e) => setTargetJobDescription(e.target.value)} className="w-full h-28 rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-base md:text-lg mb-3" placeholder="Paste key responsibilities..." />
 
             <label className="block text-lg mb-2 text-white/90">Upload CV <span className="text-pink-300">(Required)</span></label>
             <label

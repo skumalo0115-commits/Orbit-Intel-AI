@@ -16,9 +16,10 @@ interface SummaryPanelProps {
   summary?: string
   insights?: Insights
   targetJobTitle?: string
+  classification?: string
 }
 
-export default function SummaryPanel({ summary, insights, targetJobTitle }: SummaryPanelProps) {
+export default function SummaryPanel({ summary, insights, targetJobTitle, classification }: SummaryPanelProps) {
   const targetFit = insights?.target_fit_percent ?? 0
   const strengths = insights?.cv_strengths_for_target ?? []
   const gaps = insights?.cv_gaps_for_target ?? []
@@ -46,20 +47,20 @@ export default function SummaryPanel({ summary, insights, targetJobTitle }: Summ
 
   if (!insights) {
     return (
-      <div className="glass-card p-5">
-        <h3 className="text-cyan-300 mb-2">Summary</h3>
+      <div>
+        <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
         <p className="text-white/80 text-sm whitespace-pre-wrap">{summary || 'No summary yet.'}</p>
       </div>
     )
   }
 
   return (
-    <div className="glass-card p-5 space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center gap-3 pb-3 border-b border-white/10">
         <Target className="text-cyan-300" size={24} />
         <div>
-          <h3 className="text-cyan-300 text-lg font-semibold">Target Role Analysis</h3>
-          {targetJobTitle && <p className="text-white/70 text-sm">{targetJobTitle}</p>}
+          <h3 className="text-2xl font-semibold">AI Career Suggestion Summary</h3>
+          {targetJobTitle && <p className="text-white/70 text-sm">Target: {targetJobTitle}</p>}
         </div>
       </div>
 
@@ -169,9 +170,12 @@ export default function SummaryPanel({ summary, insights, targetJobTitle }: Summ
 
       {summary && (
         <div className="pt-3 border-t border-white/10">
-          <h4 className="text-cyan-300 font-medium mb-2">AI Analysis Summary</h4>
           <p className="text-white/70 text-sm whitespace-pre-line">{summary}</p>
         </div>
+      )}
+      
+      {classification && (
+        <p className="text-lg text-cyan-300">Document Type: {classification}</p>
       )}
     </div>
   )
