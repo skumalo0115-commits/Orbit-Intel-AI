@@ -1,6 +1,7 @@
-![Orbit Intel-AI Home Page](https://wallstreetpit.com/wp-content/uploads/news/ai-cg/AI5-G.jpg)
-
 # 🚀 Orbit Intel-AI — AI Career Intelligence Platform
+
+<img width="1880" height="896" alt="image" src="https://github.com/user-attachments/assets/eff51d06-19e7-4cd8-9e9b-51b572e04fb5" />
+
 
 An end-to-end career guidance app that lets users upload a CV, compare it to a target role, and get practical, evidence-based recommendations.
 
