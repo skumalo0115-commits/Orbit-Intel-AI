@@ -14,6 +14,10 @@ from backend.services.dependencies import get_current_user
 router = APIRouter(tags=["analysis"])
 
 
+class JobsResponse(BaseModel):
+    jobs: list[str]
+
+
 class QuestionRequest(BaseModel):
     question: str
 
@@ -24,6 +28,12 @@ class AnalyzeRequest(BaseModel):
     profession: str | None = None
     target_job_title: str | None = None
     target_job_description: str | None = None
+
+
+@router.get("/jobs", response_model=JobsResponse)
+def get_available_jobs():
+    """Return all available job titles from the profile map."""
+    return {"jobs": list(ai_pipeline.profile_map.keys())}
 
 
 @router.post("/analyze/{document_id}", response_model=AnalysisResponse)

@@ -1,6 +1,6 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, Sparkles, Upload } from 'lucide-react'
+import { Brain, Search, Sparkles, Upload, X } from 'lucide-react'
 import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
 import AppFooter from '../components/AppFooter'
@@ -31,6 +31,86 @@ function useTypingText(text: string, speed = 45) {
   return value
 }
 
+// Job Search Dropdown Component
+function JobSearchDropdown({
+  value,
+  onChange,
+  jobs,
+}: {
+  value: string
+  onChange: (value: string) => void
+  jobs: string[]
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const filteredJobs = useMemo(() => {
+    if (!searchTerm) return jobs
+    const term = searchTerm.toLowerCase()
+    return jobs.filter((job) => job.toLowerCase().includes(term))
+  }, [jobs, searchTerm])
+
+  const selectedJob = value
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-300" size={20} />
+        <input
+          type="text"
+          value={selectedJob || searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value)
+            setIsOpen(true)
+            if (!e.target.value) {
+              onChange('')
+            }
+          }}
+          onFocus={() => setIsOpen(true)}
+          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+          className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 pl-10 text-lg mb-3"
+          placeholder="Search for a job title..."
+        />
+        {selectedJob && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange('')
+              setSearchTerm('')
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-300 hover:text-white transition"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+      {isOpen && filteredJobs.length > 0 && (
+        <motion.ul
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-xl border border-violet-400/45 bg-[#1a1a2e]/95 backdrop-blur-md shadow-lg"
+        >
+          {filteredJobs.map((job) => (
+            <li key={job}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(job)
+                  setSearchTerm('')
+                  setIsOpen(false)
+                }}
+                className="w-full px-4 py-3 text-left text-white/90 hover:bg-violet-500/30 hover:text-white transition"
+              >
+                {job}
+              </button>
+            </li>
+          ))}
+        </motion.ul>
+      )}
+    </div>
+  )
+}
+
 export default function DashboardPage({ onSelect }: { onSelect: (id: number) => void }) {
   const [docs, setDocs] = useState<DocumentItem[]>([])
   const [skills, setSkills] = useState('')
@@ -41,8 +121,23 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [availableJobs, setAvailableJobs] = useState<string[]>([])
   const title = useTypingText('AI Career Intelligence System', 60)
   const docsCacheKey = 'dashboard_docs_cache'
+
+  // Load available jobs on mount
+  useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        const response = await api.get<{ jobs: string[] }>('/jobs')
+        setAvailableJobs(response.data.jobs || [])
+      } catch {
+        // Silently fail - jobs will just not be available
+        setAvailableJobs([])
+      }
+    }
+    loadJobs()
+  }, [])
 
   const loadDocuments = async () => {
     try {
@@ -231,7 +326,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
             <input value={skills} onChange={(e) => setSkills(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Python, JavaScript, React, Machine Learning..." />
 
             <label className="block text-lg mb-2 text-white/90">Target Job Title</label>
-            <input value={targetJobTitle} onChange={(e) => setTargetJobTitle(e.target.value)} className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="e.g., Senior Data Analyst" />
+            <JobSearchDropdown value={targetJobTitle} onChange={setTargetJobTitle} jobs={availableJobs} />
 
             <label className="block text-lg mb-2 text-white/90">Target Job Description</label>
             <textarea value={targetJobDescription} onChange={(e) => setTargetJobDescription(e.target.value)} className="w-full h-28 rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-lg mb-3" placeholder="Paste key responsibilities/requirements from the job description..." />

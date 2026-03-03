@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Brain, Target } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import AppFooter from '../components/AppFooter'
+import SummaryPanel from '../components/SummaryPanel'
 import axios from 'axios'
 import api from '../services/api'
 
@@ -241,6 +242,15 @@ export default function AnalysisPage() {
                   <MatchCard key={`${item.name}-${idx}`} name={item.name} score={item.score} reason={item.reason} delay={idx} />
                 ))}
               </div>
+
+              {/* Enhanced Summary Panel - Target Job Focus */}
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mb-4">
+                <SummaryPanel 
+                  summary={analysis?.summary} 
+                  insights={analysis?.insights as any}
+                  targetJobTitle={(analysis?.insights as any)?.target_job_title}
+                />
+              </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="rounded-2xl border border-white/20 p-4 bg-[linear-gradient(160deg,rgba(147,51,234,0.16),rgba(15,23,42,0.7)) ]">
                 <h3 className="text-2xl font-semibold mb-2">AI Career Suggestion Summary</h3>
