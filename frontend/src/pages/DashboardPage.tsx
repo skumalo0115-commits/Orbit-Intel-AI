@@ -1,6 +1,6 @@
 import { DragEvent, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Brain, Search, Sparkles, Upload, X } from 'lucide-react'
+import { Brain, Sparkles, Upload, X } from 'lucide-react'
 import axios from 'axios'
 import DocumentCard from '../components/DocumentCard'
 import AppFooter from '../components/AppFooter'
@@ -55,7 +55,6 @@ function JobSearchDropdown({
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-3 text-violet-300" size={20} style={{ top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
           value={selectedJob}
@@ -68,7 +67,7 @@ function JobSearchDropdown({
           }}
           onFocus={() => setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-          className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 pl-10 text-base md:text-lg mb-3"
+          className="w-full rounded-2xl border border-violet-400/45 bg-white/10 p-3 text-base md:text-lg mb-3"
           placeholder="Click to search job titles..."
           autoComplete="off"
         />
@@ -285,22 +284,17 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
     }
   }
 
-  const removeDocument = async (id: number) => {
-    try {
-      await api.delete(`/documents/${id}`)
-      setDocs((prev) => {
-        const next = prev.filter((doc) => doc.id !== id)
-        sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
-        return next
-      })
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail
-        setError(typeof detail === 'string' ? detail : 'Unable to delete this document right now. Please try again.')
-      } else {
-        setError('Unable to delete this document right now. Please try again.')
-      }
-    }
+  const removeDocument = (id: number) => {
+    // Instantly remove from UI without waiting for API
+    setDocs((prev) => {
+      const next = prev.filter((doc) => doc.id !== id)
+      sessionStorage.setItem(docsCacheKey, JSON.stringify(next))
+      return next
+    })
+    // Also delete from API in background (fire and forget)
+    api.delete(`/documents/${id}`).catch(() => {
+      // Silently fail - document already removed from UI
+    })
   }
 
   return (

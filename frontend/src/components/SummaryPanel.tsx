@@ -106,22 +106,6 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
         </div>
       )}
 
-      {missing.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <XCircle className="text-pink-400" size={18} />
-            <h4 className="text-white font-medium">Missing Skills</h4>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {missing.slice(0, 8).map((skill) => (
-              <span key={skill} className="px-3 py-1 rounded-full bg-pink-500/20 text-pink-300 text-sm border border-pink-400/30">
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {strengths.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
