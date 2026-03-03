@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.database.config import Settings
-from backend.database.session import Base, engine
+from backend.database.session import Base, engine, ensure_user_schema
 from backend.models import analysis, document, user  # noqa: F401
 from backend.routes.analysis import router as analysis_router
 from backend.routes.auth import router as auth_router
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+ensure_user_schema()
 
 app.include_router(auth_router)
 app.include_router(documents_router)

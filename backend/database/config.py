@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     upload_dir: str = "backend/uploads"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_sender_email: str = ""
+    smtp_sender_name: str = "Orbit Intel-AI"
+    smtp_use_tls: bool = True
 
     model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8")
 
