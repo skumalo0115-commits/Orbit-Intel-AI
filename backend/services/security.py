@@ -18,18 +18,43 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(subject: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": subject, "exp": expire}
+def _create_token(subject: str, expires_delta: timedelta, token_type: str) -> str:
+    expire = datetime.now(timezone.utc) + expires_delta
+    payload = {"sub": subject, "exp": expire, "type": token_type}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_token(token: str) -> str:
+def create_access_token(subject: str) -> str:
+    return _create_token(
+        subject=subject,
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+        token_type="access",
+    )
+
+
+def create_password_reset_token(subject: str) -> str:
+    return _create_token(subject=subject, expires_delta=timedelta(hours=1), token_type="password_reset")
+
+
+def _decode_token(token: str, expected_type: str) -> str:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except JWTError as exc:
         raise ValueError("Invalid token") from exc
+
+    token_type = payload.get("type")
+    if token_type != expected_type:
+        raise ValueError("Invalid token type")
+
     subject = payload.get("sub")
     if not subject:
         raise ValueError("Invalid token subject")
     return subject
+
+
+def decode_token(token: str) -> str:
+    return _decode_token(token=token, expected_type="access")
+
+
+def decode_password_reset_token(token: str) -> str:
+    return _decode_token(token=token, expected_type="password_reset")

@@ -253,20 +253,6 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
             Begin Your Journey
             <motion.span animate={{ x: [0, 6, 0], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}><Rocket size={24} /></motion.span>
           </motion.button>
-          <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm sm:text-base">
-            {['Neural FX', 'Realtime Insights', 'Hyper UI'].map((tag, i) => (
-              <motion.span
-                key={tag}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 + i * 0.12 }}
-                whileHover={{ y: -2, scale: 1.03 }}
-                className="px-4 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md text-cyan-100"
-              >
-                {tag}
-              </motion.span>
-            ))}
-          </div>
           <motion.div style={{ opacity: scrollOpacity, y: scrollYPos }} className="mt-5 flex flex-col items-center text-[#a0aec0]" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.8, repeat: Infinity }}>
             <ChevronDown className="text-cyan-300" /><span className="text-xl">Scroll to explore</span>
           </motion.div>

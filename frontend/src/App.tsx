@@ -1,3 +1,6 @@
+import axios from 'axios'
+import { signInWithPopup } from 'firebase/auth'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import MouseGlow from './components/MouseGlow'
 import Navbar from './components/Navbar'
@@ -7,31 +10,79 @@ import AnalysisPage from './pages/AnalysisPage'
 import DashboardPage from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
 import api from './services/api'
-import { useEffect, useMemo, useState } from 'react'
-import axios from 'axios'
+import { getFirebaseAuth, googleProvider } from './services/firebase'
 
-type AuthMode = 'login' | 'register'
+type AuthMode = 'login' | 'register' | 'forgot-password' | 'forgot-username'
+
+type TokenPayload = {
+  access_token: string
+  username: string
+  email: string
+}
+
+type MessagePayload = {
+  message: string
+}
 
 type AuthCardProps = {
   mode: AuthMode
   onModeChange: (mode: AuthMode) => void
-  onAuthenticated: (username: string) => void
+  onAuthenticated: (payload: TokenPayload) => void
   onClose: () => void
 }
 
+type ResetPasswordPageProps = {
+  onBackToLogin: () => void
+}
+
+function GoogleButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string
+  onClick: () => void
+  disabled: boolean
+}) {
+  return (
+    <button
+      type="button"
+      className="w-full rounded-xl border border-white/15 bg-white/6 hover:bg-white/10 text-white font-medium py-2.5 transition disabled:opacity-70 flex items-center justify-center gap-3"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-900 font-bold">G</span>
+      {label}
+    </button>
+  )
+}
+
 function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProps) {
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isRegister = mode === 'register'
+  useEffect(() => {
+    setIdentifier('')
+    setEmail('')
+    setPassword('')
+    setError(null)
+    setSuccess(null)
+  }, [mode])
 
-  const submit = async () => {
-    if (!username || !password || (isRegister && !email)) {
-      setError(isRegister ? 'Please enter username, email and password.' : 'Please enter username and password.')
+  const completeAuth = (payload: TokenPayload) => {
+    localStorage.setItem('token', payload.access_token)
+    localStorage.setItem('profile_username', payload.username)
+    localStorage.setItem('profile_email', payload.email)
+    onAuthenticated(payload)
+  }
+
+  const submitLogin = async () => {
+    if (!identifier.trim() || !password) {
+      setError('Please enter your username or email, plus your password.')
       return
     }
 
@@ -40,32 +91,71 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     setIsSubmitting(true)
 
     try {
-      const payload = isRegister
-        ? { username: username.trim(), email: email.trim(), password }
-        : { username: username.trim(), password }
-
-      const endpoint = isRegister ? '/auth/register' : '/auth/login'
-      const response = await api.post(endpoint, payload)
-
-      localStorage.setItem('token', response.data.access_token)
-      localStorage.setItem('profile_username', username.trim())
-      localStorage.removeItem('profile_email')
-
-      if (isRegister) {
-        setSuccess('Registration successful. A welcome email has been sent if SMTP is configured.')
-      }
-
-      onAuthenticated(username.trim())
+      const response = await api.post<TokenPayload>('/auth/login', {
+        identifier: identifier.trim(),
+        password,
+      })
+      completeAuth(response.data)
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.detail ?? 'Unable to reach API. Check backend and VITE_API_URL.')
       } else {
-        setError('Unexpected error while authenticating. Please try again.')
+        setError('Unexpected error while logging in. Please try again.')
       }
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  const submitGoogle = async () => {
+    setError(null)
+    setSuccess(null)
+    setIsSubmitting(true)
+
+    try {
+      const firebaseAuth = getFirebaseAuth()
+      const result = await signInWithPopup(firebaseAuth, googleProvider)
+      const idToken = await result.user.getIdToken()
+      const response = await api.post<TokenPayload>('/auth/google', { id_token: idToken })
+      completeAuth(response.data)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail ?? 'Google sign-in could not be completed.')
+      } else if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Google sign-in could not be completed.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const submitRecovery = async (endpoint: '/auth/forgot-password' | '/auth/forgot-username') => {
+    if (!email.trim()) {
+      setError('Please enter your email address.')
+      return
+    }
+
+    setError(null)
+    setSuccess(null)
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.post<MessagePayload>(endpoint, { email: email.trim() })
+      setSuccess(response.data.message)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail ?? 'We could not send that request right now.')
+      } else {
+        setError('We could not send that request right now.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const isRecoveryMode = mode === 'forgot-password' || mode === 'forgot-username'
 
   return (
     <div className="glass-card p-8 w-full max-w-md space-y-5 relative">
@@ -75,68 +165,230 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
         className="absolute right-4 top-4 h-8 w-8 rounded-full border border-white/20 bg-white/5 text-white/80 hover:bg-white/15 hover:text-white transition"
         aria-label="Close authentication"
       >
-        ×
+        X
       </button>
 
       <div className="pr-8">
         <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Orbit Intel-AI</p>
-        <h2 className="text-2xl font-semibold mt-2">{isRegister ? 'Create your account' : 'Welcome back'}</h2>
+        <h2 className="text-2xl font-semibold mt-2">
+          {mode === 'login' && 'Welcome back'}
+          {mode === 'register' && 'Create your account with Google'}
+          {mode === 'forgot-password' && 'Reset your password'}
+          {mode === 'forgot-username' && 'Recover your username'}
+        </h2>
+        <p className="text-sm text-white/65 mt-2">
+          {mode === 'login' && 'Sign in with your username or email, or use Google.'}
+          {mode === 'register' && 'Register is Google-only now, just like you asked.'}
+          {mode === 'forgot-password' && 'Enter your email and we will send you a reset link.'}
+          {mode === 'forgot-username' && 'Enter your email and we will send your username reminder.'}
+        </p>
       </div>
 
-      <div className="space-y-3">
-        <input
-          className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+      {mode === 'login' && (
+        <>
+          <div className="space-y-3">
+            <input
+              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+              placeholder="Username or email"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+            />
+            <input
+              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
 
-        {isRegister && (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('forgot-password')}>
+              Forgot password?
+            </button>
+            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('forgot-username')}>
+              Forgot username?
+            </button>
+          </div>
+
+          {error && <p className="text-sm text-red-300">{error}</p>}
+          {success && <p className="text-sm text-emerald-300">{success}</p>}
+
+          <button
+            type="button"
+            className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
+            onClick={submitLogin}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Please wait...' : 'Login'}
+          </button>
+
+          <div className="relative py-1 text-center text-xs uppercase tracking-[0.2em] text-white/40">
+            <span className="relative z-10 bg-[#080d17] px-3">or</span>
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-white/10" />
+          </div>
+
+          <GoogleButton label={isSubmitting ? 'Please wait...' : 'Continue with Google'} onClick={submitGoogle} disabled={isSubmitting} />
+
+          <p className="text-sm text-white/70 text-center">
+            need an account?{' '}
+            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('register')}>
+              register with Google
+            </button>
+          </p>
+        </>
+      )}
+
+      {mode === 'register' && (
+        <>
+          {error && <p className="text-sm text-red-300">{error}</p>}
+          {success && <p className="text-sm text-emerald-300">{success}</p>}
+
+          <GoogleButton label={isSubmitting ? 'Please wait...' : 'Sign up with Google'} onClick={submitGoogle} disabled={isSubmitting} />
+
+          <p className="text-sm text-white/70 text-center">
+            already have an account?{' '}
+            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('login')}>
+              go to login
+            </button>
+          </p>
+        </>
+      )}
+
+      {isRecoveryMode && (
+        <>
           <input
             className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
             placeholder="Email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
           />
-        )}
 
-        <input
-          className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+          {error && <p className="text-sm text-red-300">{error}</p>}
+          {success && <p className="text-sm text-emerald-300">{success}</p>}
 
-      {error && <p className="text-sm text-red-300">{error}</p>}
-      {success && <p className="text-sm text-emerald-300">{success}</p>}
-
-      <button
-        type="button"
-        className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
-        onClick={submit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Please wait...' : isRegister ? 'Register' : 'Login'}
-      </button>
-
-      {!isRegister ? (
-        <p className="text-sm text-white/70 text-center">
-          dont have an account?{' '}
-          <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('register')}>
-            register
+          <button
+            type="button"
+            className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
+            onClick={() => submitRecovery(mode === 'forgot-password' ? '/auth/forgot-password' : '/auth/forgot-username')}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Please wait...' : mode === 'forgot-password' ? 'Send reset link' : 'Send username reminder'}
           </button>
-        </p>
-      ) : (
-        <p className="text-sm text-white/70 text-center">
-          already have an account?{' '}
-          <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('login')}>
-            Login
-          </button>
-        </p>
+
+          <p className="text-sm text-white/70 text-center">
+            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('login')}>
+              Back to login
+            </button>
+          </p>
+        </>
       )}
+    </div>
+  )
+}
+
+function ResetPasswordPage({ onBackToLogin }: ResetPasswordPageProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const token = useMemo(() => new URLSearchParams(location.search).get('token') ?? '', [location.search])
+
+  const submit = async () => {
+    if (!token) {
+      setError('This password reset link is missing a token.')
+      return
+    }
+
+    if (!password || !confirmPassword) {
+      setError('Please enter your new password twice.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('The passwords do not match.')
+      return
+    }
+
+    setError(null)
+    setSuccess(null)
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.post<MessagePayload>('/auth/reset-password', {
+        token,
+        new_password: password,
+      })
+      setSuccess(response.data.message)
+      setPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail ?? 'We could not reset your password.')
+      } else {
+        setError('We could not reset your password.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="glass-card p-8 w-full max-w-md space-y-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Orbit Intel-AI</p>
+          <h2 className="text-2xl font-semibold mt-2">Choose a new password</h2>
+          <p className="text-sm text-white/65 mt-2">Set a fresh password for your account, then head back to login.</p>
+        </div>
+
+        <div className="space-y-3">
+          <input
+            className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+            type="password"
+            placeholder="New password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <input
+            className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+            type="password"
+            placeholder="Confirm new password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+        </div>
+
+        {error && <p className="text-sm text-red-300">{error}</p>}
+        {success && <p className="text-sm text-emerald-300">{success}</p>}
+
+        <button
+          type="button"
+          className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
+          onClick={submit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Please wait...' : 'Update password'}
+        </button>
+
+        <div className="text-sm text-white/70 text-center">
+          <button
+            type="button"
+            className="text-cyan-300 hover:text-cyan-200"
+            onClick={() => {
+              onBackToLogin()
+              navigate('/auth')
+            }}
+          >
+            Back to login
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -152,10 +404,10 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
-  const authRefresh = (username: string) => {
-    const token = localStorage.getItem('token')
-    if (token) saveToken(token)
-    localStorage.setItem('profile_username', username)
+  const authRefresh = (payload: TokenPayload) => {
+    saveToken(payload.access_token)
+    localStorage.setItem('profile_username', payload.username)
+    localStorage.setItem('profile_email', payload.email)
     setShowAuthModal(false)
     setAuthMode('login')
     navigate('/dashboard')
@@ -180,6 +432,11 @@ export default function App() {
   const openAuth = () => {
     setAuthMode('login')
     setShowAuthModal(true)
+  }
+
+  const closeAuth = () => {
+    setShowAuthModal(false)
+    setAuthMode('login')
   }
 
   return (
@@ -207,6 +464,7 @@ export default function App() {
                 )
               }
             />
+            <Route path="/reset-password" element={<ResetPasswordPage onBackToLogin={() => setAuthMode('login')} />} />
             <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />
             <Route path="/analysis/:documentId" element={isAuthenticated ? <AnalysisPage /> : <Navigate to="/auth" />} />
             <Route path="/analysis" element={<Navigate to="/dashboard" />} />
@@ -215,10 +473,10 @@ export default function App() {
       </div>
 
       {showAuthModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" onClick={() => setShowAuthModal(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" onClick={closeAuth}>
           <div className="absolute inset-0 bg-black/55 backdrop-blur-md" />
-          <div className="relative z-10 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <AuthCard mode={authMode} onModeChange={setAuthMode} onAuthenticated={authRefresh} onClose={() => setShowAuthModal(false)} />
+          <div className="relative z-10 w-full max-w-md" onClick={(event) => event.stopPropagation()}>
+            <AuthCard mode={authMode} onModeChange={setAuthMode} onAuthenticated={authRefresh} onClose={closeAuth} />
           </div>
         </div>
       )}

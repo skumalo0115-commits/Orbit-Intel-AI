@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     smtp_sender_email: str = ""
     smtp_sender_name: str = "Orbit Intel-AI"
     smtp_use_tls: bool = True
+    frontend_app_url: str = ""
+    firebase_credentials_path: str = ""
 
     model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8")
 

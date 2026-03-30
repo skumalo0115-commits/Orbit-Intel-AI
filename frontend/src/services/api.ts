@@ -62,7 +62,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       const requestPath = config.url ?? ''
-      const isAuthRequest = requestPath.includes('/auth/login') || requestPath.includes('/auth/register')
+      const isAuthRequest = requestPath.includes('/auth/')
 
       if (!isAuthRequest) {
         localStorage.removeItem('token')
