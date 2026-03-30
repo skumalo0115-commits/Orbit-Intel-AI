@@ -233,7 +233,19 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ opacity: scrollOpacity, y: scrollYPos }} transition={{ duration: 0.6 }} className="relative z-10 text-center max-w-5xl">
           <motion.div className="mb-6 flex items-center justify-center" animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}>
-            <div className="w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon"><Brain className="text-cyan-300" size={46} /></div>
+            <div className="relative w-20 h-20 rounded-full border border-cyan-300/35 bg-cyan-300/10 flex items-center justify-center shadow-neon">
+              <motion.div
+                className="absolute inset-[-8px] rounded-full border border-cyan-300/35"
+                animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.2, 0.8] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <motion.div
+                className="absolute inset-[-16px] rounded-full border border-violet-300/25"
+                animate={{ scale: [1.05, 1.28, 1.05], opacity: [0.6, 0.1, 0.6] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <Brain className="text-cyan-300" size={46} />
+            </div>
           </motion.div>
           <h1 className="font-['Space_Grotesk'] text-4xl sm:text-5xl md:text-8xl font-bold tracking-[-0.02em] leading-[1.08] md:leading-[1.03] min-h-[88px] sm:min-h-[110px] md:min-h-[140px] break-words"><span className="bg-gradient-to-r from-cyan-300 via-violet-300 to-pink-400 bg-clip-text text-transparent">{headingLine}</span></h1>
           <p className="text-[#c5d0df] text-lg sm:text-2xl max-w-4xl mx-auto mt-6 sm:mt-7 leading-relaxed">Discover your perfect career path with AI-powered insights. Transform your skills into opportunities.</p>
@@ -241,6 +253,20 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
             Begin Your Journey
             <motion.span animate={{ x: [0, 6, 0], y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}><Rocket size={24} /></motion.span>
           </motion.button>
+          <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm sm:text-base">
+            {['Neural FX', 'Realtime Insights', 'Hyper UI'].map((tag, i) => (
+              <motion.span
+                key={tag}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 + i * 0.12 }}
+                whileHover={{ y: -2, scale: 1.03 }}
+                className="px-4 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md text-cyan-100"
+              >
+                {tag}
+              </motion.span>
+            ))}
+          </div>
           <motion.div style={{ opacity: scrollOpacity, y: scrollYPos }} className="mt-5 flex flex-col items-center text-[#a0aec0]" animate={{ y: [0, 8, 0] }} transition={{ duration: 1.8, repeat: Infinity }}>
             <ChevronDown className="text-cyan-300" /><span className="text-xl">Scroll to explore</span>
           </motion.div>
