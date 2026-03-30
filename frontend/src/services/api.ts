@@ -9,7 +9,8 @@ type RetryableConfig = InternalAxiosRequestConfig & {
 const trimSlash = (value: string) => value.replace(/\/$/, '')
 
 const getBaseUrlCandidates = (): string[] => {
-  const envBaseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+  const runtimeBaseUrl = window.__ORBIT_RUNTIME_CONFIG__?.VITE_API_URL?.trim()
+  const envBaseUrl = (runtimeBaseUrl || (import.meta.env.VITE_API_URL as string | undefined))?.trim()
   const protocol = window.location.protocol
   const hostname = window.location.hostname
   const origin = window.location.origin

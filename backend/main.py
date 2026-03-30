@@ -1,9 +1,10 @@
 from pathlib import Path
+import json
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from backend.database.config import Settings
@@ -58,6 +59,21 @@ def env_check():
         "required": required,
         "optional": optional,
     }
+
+
+@app.get("/runtime-config.js")
+def runtime_config():
+    config = {
+        "VITE_API_URL": os.getenv("VITE_API_URL", "").strip(),
+        "VITE_FIREBASE_API_KEY": os.getenv("VITE_FIREBASE_API_KEY", "").strip(),
+        "VITE_FIREBASE_AUTH_DOMAIN": os.getenv("VITE_FIREBASE_AUTH_DOMAIN", "").strip(),
+        "VITE_FIREBASE_PROJECT_ID": os.getenv("VITE_FIREBASE_PROJECT_ID", "").strip(),
+        "VITE_FIREBASE_STORAGE_BUCKET": os.getenv("VITE_FIREBASE_STORAGE_BUCKET", "").strip(),
+        "VITE_FIREBASE_MESSAGING_SENDER_ID": os.getenv("VITE_FIREBASE_MESSAGING_SENDER_ID", "").strip(),
+        "VITE_FIREBASE_APP_ID": os.getenv("VITE_FIREBASE_APP_ID", "").strip(),
+    }
+    payload = f"window.__ORBIT_RUNTIME_CONFIG__ = {json.dumps(config)};"
+    return Response(content=payload, media_type="application/javascript")
 
 
 @app.get("/{full_path:path}")
