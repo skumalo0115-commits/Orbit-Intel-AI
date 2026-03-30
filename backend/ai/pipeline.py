@@ -1,8 +1,9 @@
 from typing import Any
 import json
+import os
 import re
 from urllib.parse import quote
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 
@@ -10,6 +11,8 @@ class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
 
     def __init__(self) -> None:
+        self.openrouter_api_key = (os.getenv("OPENROUTER_API_KEY") or "").strip()
+        self.openrouter_model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-4o-mini").strip()
         self.profile_map: dict[str, list[str]] = {
             # Technology & Software
             "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++", "software", "backend", "frontend"],
@@ -203,12 +206,23 @@ class AIPipeline:
             career = self._career_insights(trimmed, context, research)
             summary = self._compose_career_summary(career, context, research)
 
+            if self.openrouter_api_key:
+                llm_summary = self._generate_openrouter_summary(
+                    cv_text=trimmed,
+                    base_summary=summary,
+                    classification=classification,
+                    career=career,
+                    profile_context=context,
+                )
+                if llm_summary:
+                    summary = llm_summary
+
             insights = {
                 "word_count": len(trimmed.split()),
                 "entity_count": len(entities),
                 "contains_financial_signals": any("$" in token for token in trimmed.split()),
                 "web_research": research,
-                "analysis_provider": "builtin-ai",
+                "analysis_provider": "openrouter" if self.openrouter_api_key else "builtin-ai",
                 **career,
             }
 
@@ -250,6 +264,67 @@ class AIPipeline:
                     **fallback_career,
                 },
             }
+
+    def _call_openrouter(self, system_prompt: str, user_prompt: str, temperature: float = 0.4) -> str:
+        if not self.openrouter_api_key:
+            return ""
+
+        payload = {
+            "model": self.openrouter_model,
+            "temperature": temperature,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+
+        request = Request(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.openrouter_api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://orbit-intel-ai.local",
+                "X-Title": "Orbit Intel AI",
+            },
+            method="POST",
+        )
+
+        try:
+            with urlopen(request, timeout=12) as response:  # noqa: S310
+                data = json.loads(response.read().decode("utf-8"))
+            choices = data.get("choices") or []
+            if not choices:
+                return ""
+            message = choices[0].get("message") or {}
+            content = (message.get("content") or "").strip()
+            return content
+        except Exception:
+            return ""
+
+    def _generate_openrouter_summary(
+        self,
+        cv_text: str,
+        base_summary: str,
+        classification: str,
+        career: dict[str, Any],
+        profile_context: dict[str, str],
+    ) -> str:
+        prompt = (
+            "Rewrite the CV analysis into concise markdown bullets. Keep it factual and specific. "
+            "Use exactly 7 bullets and include: role fit percent, top role, strongest evidence, top 3 gaps, "
+            "alternative role, and a 30-day action plan.\n\n"
+            f"Classification: {classification}\n"
+            f"Target job title: {(profile_context.get('target_job_title') or '').strip()}\n"
+            f"Career insights JSON: {json.dumps(career)}\n"
+            f"Base summary: {base_summary}\n"
+            f"CV excerpt: {cv_text[:2200]}"
+        )
+        return self._call_openrouter(
+            system_prompt="You are a strict CV analyst. Return only markdown bullet points.",
+            user_prompt=prompt,
+            temperature=0.25,
+        )
 
     def _classify(self, text: str) -> str:
         content = text.lower()
@@ -607,6 +682,23 @@ class AIPipeline:
     def answer_question(self, question: str, cv_text: str, analysis_insights: dict[str, Any] | None = None, summary: str = "") -> str:
         q = (question or "").strip().lower()
         insights = analysis_insights or {}
+
+        if self.openrouter_api_key and question.strip():
+            prompt = (
+                "Answer the user's CV question using only the provided analysis context. "
+                "If context is weak, say so briefly and give practical next steps.\n\n"
+                f"Question: {question}\n"
+                f"Insights JSON: {json.dumps(insights)}\n"
+                f"Summary: {summary}\n"
+                f"CV excerpt: {(cv_text or '')[:2200]}"
+            )
+            llm_answer = self._call_openrouter(
+                system_prompt="You are a pragmatic career coach. Keep responses under 120 words.",
+                user_prompt=prompt,
+                temperature=0.3,
+            )
+            if llm_answer:
+                return llm_answer
 
         top_scores = insights.get("profession_scores") or []
         top_role = top_scores[0]["name"] if top_scores else "General Professional Role"
