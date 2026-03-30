@@ -2,6 +2,8 @@ from backend.database.config import get_settings
 
 
 def verify_firebase_id_token(id_token: str) -> dict:
+    import json
+
     try:
         import firebase_admin
         from firebase_admin import auth, credentials
@@ -11,8 +13,12 @@ def verify_firebase_id_token(id_token: str) -> dict:
     settings = get_settings()
 
     if not firebase_admin._apps:
+        credentials_json = settings.firebase_credentials_json.strip()
         credentials_path = settings.firebase_credentials_path.strip()
-        if credentials_path:
+
+        if credentials_json:
+            firebase_admin.initialize_app(credentials.Certificate(json.loads(credentials_json)))
+        elif credentials_path:
             firebase_admin.initialize_app(credentials.Certificate(credentials_path))
         else:
             firebase_admin.initialize_app()

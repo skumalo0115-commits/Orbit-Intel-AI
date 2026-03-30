@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     frontend_app_url: str = ""
     firebase_credentials_path: str = ""
+    firebase_credentials_json: str = ""
 
     model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8")
 

@@ -58,6 +58,7 @@ function GoogleButton({
 }
 
 function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProps) {
+  const [username, setUsername] = useState('')
   const [identifier, setIdentifier] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,6 +67,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    setUsername('')
     setIdentifier('')
     setEmail('')
     setPassword('')
@@ -131,6 +133,34 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     }
   }
 
+  const submitRegister = async () => {
+    if (!username.trim() || !email.trim() || !password) {
+      setError('Please enter a username, email, and password.')
+      return
+    }
+
+    setError(null)
+    setSuccess(null)
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.post<TokenPayload>('/auth/register', {
+        username: username.trim(),
+        email: email.trim(),
+        password,
+      })
+      completeAuth(response.data)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail ?? 'We could not create your account right now.')
+      } else {
+        setError('We could not create your account right now.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const submitRecovery = async (endpoint: '/auth/forgot-password' | '/auth/forgot-username') => {
     if (!email.trim()) {
       setError('Please enter your email address.')
@@ -172,13 +202,13 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
         <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Orbit Intel-AI</p>
         <h2 className="text-2xl font-semibold mt-2">
           {mode === 'login' && 'Welcome back'}
-          {mode === 'register' && 'Create your account with Google'}
+          {mode === 'register' && 'Create your account'}
           {mode === 'forgot-password' && 'Reset your password'}
           {mode === 'forgot-username' && 'Recover your username'}
         </h2>
         <p className="text-sm text-white/65 mt-2">
           {mode === 'login' && 'Sign in with your username or email, or use Google.'}
-          {mode === 'register' && 'Register is Google-only now, just like you asked.'}
+          {mode === 'register' && 'Register with email and password, or use Google if you prefer.'}
           {mode === 'forgot-password' && 'Enter your email and we will send you a reset link.'}
           {mode === 'forgot-username' && 'Enter your email and we will send your username reminder.'}
         </p>
@@ -233,7 +263,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
           <p className="text-sm text-white/70 text-center">
             need an account?{' '}
             <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('register')}>
-              register with Google
+              register
             </button>
           </p>
         </>
@@ -241,8 +271,45 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
 
       {mode === 'register' && (
         <>
+          <div className="space-y-3">
+            <input
+              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+              placeholder="Username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+            <input
+              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+              placeholder="Email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <input
+              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
+
           {error && <p className="text-sm text-red-300">{error}</p>}
           {success && <p className="text-sm text-emerald-300">{success}</p>}
+
+          <button
+            type="button"
+            className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
+            onClick={submitRegister}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Please wait...' : 'Register'}
+          </button>
+
+          <div className="relative py-1 text-center text-xs uppercase tracking-[0.2em] text-white/40">
+            <span className="relative z-10 bg-[#080d17] px-3">or</span>
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-white/10" />
+          </div>
 
           <GoogleButton label={isSubmitting ? 'Please wait...' : 'Sign up with Google'} onClick={submitGoogle} disabled={isSubmitting} />
 
