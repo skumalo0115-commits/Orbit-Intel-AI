@@ -66,6 +66,7 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     sender_email = getattr(settings, "smtp_sender_email", smtp_username).strip() or smtp_username
     sender_name = getattr(settings, "smtp_sender_name", "Orbit Intel-AI").strip() or "Orbit Intel-AI"
     use_tls = bool(getattr(settings, "smtp_use_tls", True))
+    use_ssl = bool(getattr(settings, "smtp_use_ssl", False)) or smtp_port == 465
 
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
@@ -74,9 +75,12 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     message.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-            if use_tls:
+        smtp_client = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+        with smtp_client(smtp_host, smtp_port, timeout=20) as server:
+            if use_tls and not use_ssl:
+                server.ehlo()
                 server.starttls(context=ssl.create_default_context())
+                server.ehlo()
             server.login(smtp_username, smtp_password)
             server.sendmail(sender_email, [recipient_email], message.as_string())
     except smtplib.SMTPException as exc:

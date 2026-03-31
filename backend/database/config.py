@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     smtp_sender_email: str = ""
     smtp_sender_name: str = "Orbit Intel-AI"
     smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
     frontend_app_url: str = ""
     firebase_credentials_path: str = ""
     firebase_credentials_json: str = ""
