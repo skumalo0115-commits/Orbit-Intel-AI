@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { BookOpen, Briefcase, CheckCircle, ListChecks, PenSquare, Target, TrendingUp } from 'lucide-react'
+import { BookOpen, Briefcase, CheckCircle, ListChecks, Target } from 'lucide-react'
 
 interface Insights {
   target_fit_percent?: number
@@ -11,7 +11,6 @@ interface Insights {
   target_job_title?: string
   target_alignment?: string
   cv_improvement_priorities?: string[]
-  exact_cv_additions?: string[]
   ats_keywords_to_add?: string[]
   project_suggestions?: string[]
 }
@@ -31,7 +30,6 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
   const matched = insights?.matched_requirements ?? []
   const alternativeRole = insights?.alternative_role
   const improvementPriorities = insights?.cv_improvement_priorities ?? []
-  const exactCvAdditions = insights?.exact_cv_additions ?? []
   const atsKeywords = insights?.ats_keywords_to_add ?? []
   const projectSuggestions = insights?.project_suggestions ?? []
 
@@ -114,23 +112,6 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
         </div>
       )}
 
-      {strengths.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="text-cyan-400" size={18} />
-            <h4 className="text-white font-medium">Strong Evidence Found In Your CV</h4>
-          </div>
-          <ul className="space-y-1">
-            {strengths.slice(0, 5).map((strength, idx) => (
-              <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
-                <span className="text-cyan-400 mt-1">-</span>
-                {strength}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {improvementPriorities.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -141,23 +122,6 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
             {improvementPriorities.slice(0, 5).map((item, idx) => (
               <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
                 <span className="text-yellow-400 mt-1">-</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {exactCvAdditions.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <PenSquare className="text-cyan-300" size={18} />
-            <h4 className="text-white font-medium">Exact CV Bullet Ideas To Add</h4>
-          </div>
-          <ul className="space-y-1">
-            {exactCvAdditions.slice(0, 5).map((item, idx) => (
-              <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
-                <span className="text-cyan-300 mt-1">-</span>
                 {item}
               </li>
             ))}
