@@ -17,7 +17,7 @@ from backend.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
 )
-from backend.services.email import send_password_reset_email, send_username_recovery_email, send_welcome_email
+from backend.services.email import EmailDeliveryError, send_password_reset_email, send_username_recovery_email, send_welcome_email
 from backend.services.firebase import verify_firebase_id_token
 from backend.services.security import (
     create_access_token,
@@ -120,7 +120,6 @@ def login_with_google(
 def forgot_password(
     payload: ForgotPasswordRequest,
     request: Request,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     email = payload.email.strip().lower()
@@ -133,12 +132,14 @@ def forgot_password(
     reset_token = create_password_reset_token(subject=email)
     app_url = settings.frontend_app_url.strip().rstrip("/") or str(request.base_url).rstrip("/")
     reset_link = f"{app_url}/reset-password?token={reset_token}"
-    background_tasks.add_task(
-        send_password_reset_email,
-        user.email,
-        user.username or user.email,
-        reset_link,
-    )
+    try:
+        send_password_reset_email(
+            user.email,
+            user.username or user.email,
+            reset_link,
+        )
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     return MessageResponse(message=message)
 
@@ -146,7 +147,6 @@ def forgot_password(
 @router.post("/forgot-username", response_model=MessageResponse)
 def forgot_username(
     payload: ForgotUsernameRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     email = payload.email.strip().lower()
@@ -156,7 +156,10 @@ def forgot_username(
     if not user or not user.username:
         return MessageResponse(message=message)
 
-    background_tasks.add_task(send_username_recovery_email, user.email, user.username)
+    try:
+        send_username_recovery_email(user.email, user.username)
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return MessageResponse(message=message)
 
 

@@ -57,6 +57,11 @@ def env_check():
         "OPENAI_API_KEY": bool((os.getenv("OPENAI_API_KEY", "").strip() or settings.openai_api_key).strip()),
         "OPENROUTER_MODEL": bool((os.getenv("OPENROUTER_MODEL", "").strip() or settings.openrouter_model).strip()),
         "OPENAI_MODEL": bool((os.getenv("OPENAI_MODEL", "").strip() or settings.openai_model).strip()),
+        "SMTP_HOST": bool((os.getenv("SMTP_HOST", "").strip() or settings.smtp_host).strip()),
+        "SMTP_USERNAME": bool((os.getenv("SMTP_USERNAME", "").strip() or settings.smtp_username).strip()),
+        "SMTP_PASSWORD": bool((os.getenv("SMTP_PASSWORD", "").strip() or settings.smtp_password).strip()),
+        "SMTP_SENDER_EMAIL": bool((os.getenv("SMTP_SENDER_EMAIL", "").strip() or settings.smtp_sender_email).strip()),
+        "FRONTEND_APP_URL": bool((os.getenv("FRONTEND_APP_URL", "").strip() or settings.frontend_app_url).strip()),
     }
 
     return {

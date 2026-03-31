@@ -1,8 +1,24 @@
 import smtplib
+import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import logging
 
 from backend.database.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class EmailDeliveryError(RuntimeError):
+    pass
+
+
+def email_delivery_is_configured() -> bool:
+    settings = get_settings()
+    smtp_host = getattr(settings, "smtp_host", "").strip()
+    smtp_username = getattr(settings, "smtp_username", "").strip()
+    smtp_password = getattr(settings, "smtp_password", "").strip()
+    return bool(smtp_host and smtp_username and smtp_password)
 
 
 def _wrap_email(content: str) -> str:
@@ -44,7 +60,7 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     smtp_password = getattr(settings, "smtp_password", "").strip()
 
     if not smtp_host or not smtp_username or not smtp_password:
-        return
+        raise EmailDeliveryError("Email delivery is not configured yet. Add SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD on the backend.")
 
     smtp_port = int(getattr(settings, "smtp_port", 587))
     sender_email = getattr(settings, "smtp_sender_email", smtp_username).strip() or smtp_username
@@ -57,11 +73,25 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     message["To"] = recipient_email
     message.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-        if use_tls:
-            server.starttls()
-        server.login(smtp_username, smtp_password)
-        server.sendmail(sender_email, [recipient_email], message.as_string())
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            if use_tls:
+                server.starttls(context=ssl.create_default_context())
+            server.login(smtp_username, smtp_password)
+            server.sendmail(sender_email, [recipient_email], message.as_string())
+    except smtplib.SMTPException as exc:
+        logger.exception("SMTP delivery failed for %s", recipient_email)
+        raise EmailDeliveryError("We could not send the recovery email right now. Please try again shortly.") from exc
+    except OSError as exc:
+        logger.exception("SMTP connection failed for %s", recipient_email)
+        raise EmailDeliveryError("We could not connect to the email service right now. Please try again shortly.") from exc
+
+
+def _safe_background_email(send_fn, *args: str) -> None:
+    try:
+        send_fn(*args)
+    except EmailDeliveryError:
+        logger.exception("Background email delivery failed.")
 
 
 def send_welcome_email(recipient_email: str, username: str) -> None:
@@ -75,7 +105,7 @@ def send_welcome_email(recipient_email: str, username: str) -> None:
       If you did not create this account, please ignore this email.
     </p>
     """
-    _send_email(recipient_email, "Welcome to Orbit Intel-AI", _wrap_email(content))
+    _safe_background_email(_send_email, recipient_email, "Welcome to Orbit Intel-AI", _wrap_email(content))
 
 
 def send_password_reset_email(recipient_email: str, username: str, reset_link: str) -> None:
