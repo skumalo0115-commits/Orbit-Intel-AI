@@ -466,6 +466,7 @@ export default function App() {
   const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>('login')
+  const showAmbientEffects = location.pathname === '/auth' || location.pathname === '/reset-password'
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -508,8 +509,8 @@ export default function App() {
 
   return (
     <>
-      {location.pathname !== '/' && <SpaceBackground />}
-      {location.pathname !== '/' && <MouseGlow />}
+      {showAmbientEffects && <SpaceBackground />}
+      {showAmbientEffects && <MouseGlow />}
       {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onSignOut={signOut} profileInitial={profileInitial} />}
 
       <div className="min-h-screen">
