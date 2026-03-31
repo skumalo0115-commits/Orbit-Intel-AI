@@ -53,6 +53,28 @@ def _wrap_email(content: str) -> str:
     """
 
 
+def _deliver_via_smtp(
+    smtp_host: str,
+    smtp_port: int,
+    smtp_username: str,
+    smtp_password: str,
+    sender_email: str,
+    recipient_email: str,
+    message: MIMEMultipart,
+    *,
+    use_tls: bool,
+    use_ssl: bool,
+) -> None:
+    smtp_client = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+    with smtp_client(smtp_host, smtp_port, timeout=20) as server:
+        if use_tls and not use_ssl:
+            server.ehlo()
+            server.starttls(context=ssl.create_default_context())
+            server.ehlo()
+        server.login(smtp_username, smtp_password)
+        server.sendmail(sender_email, [recipient_email], message.as_string())
+
+
 def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     settings = get_settings()
     smtp_host = getattr(settings, "smtp_host", "").strip()
@@ -75,19 +97,48 @@ def _send_email(recipient_email: str, subject: str, html_body: str) -> None:
     message.attach(MIMEText(html_body, "html"))
 
     try:
-        smtp_client = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
-        with smtp_client(smtp_host, smtp_port, timeout=20) as server:
-            if use_tls and not use_ssl:
-                server.ehlo()
-                server.starttls(context=ssl.create_default_context())
-                server.ehlo()
-            server.login(smtp_username, smtp_password)
-            server.sendmail(sender_email, [recipient_email], message.as_string())
+        _deliver_via_smtp(
+            smtp_host,
+            smtp_port,
+            smtp_username,
+            smtp_password,
+            sender_email,
+            recipient_email,
+            message,
+            use_tls=use_tls,
+            use_ssl=use_ssl,
+        )
     except smtplib.SMTPException as exc:
         logger.exception("SMTP delivery failed for %s", recipient_email)
         raise EmailDeliveryError("We could not send the recovery email right now. Please try again shortly.") from exc
     except OSError as exc:
+        fallback_attempted = False
+
+        if smtp_host.lower() == "smtp.gmail.com":
+            fallback_attempted = True
+            fallback_port = 465 if smtp_port == 587 else 587
+            fallback_use_ssl = fallback_port == 465
+            fallback_use_tls = not fallback_use_ssl
+
+            try:
+                _deliver_via_smtp(
+                    smtp_host,
+                    fallback_port,
+                    smtp_username,
+                    smtp_password,
+                    sender_email,
+                    recipient_email,
+                    message,
+                    use_tls=fallback_use_tls,
+                    use_ssl=fallback_use_ssl,
+                )
+                return
+            except (smtplib.SMTPException, OSError):
+                logger.exception("SMTP fallback delivery failed for %s", recipient_email)
+
         logger.exception("SMTP connection failed for %s", recipient_email)
+        if fallback_attempted:
+            raise EmailDeliveryError("We could not connect to Gmail from the server. Check Railway SMTP settings, Gmail App Password, and whether port 587 or 465 is allowed.") from exc
         raise EmailDeliveryError("We could not connect to the email service right now. Please try again shortly.") from exc
 
 
