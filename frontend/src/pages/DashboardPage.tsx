@@ -42,28 +42,29 @@ function JobSearchDropdown({
   jobs: string[]
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [inputValue, setInputValue] = useState(value)
+
+  useEffect(() => {
+    setInputValue(value)
+  }, [value])
 
   const filteredJobs = useMemo(() => {
-    if (!searchTerm) return jobs.slice(0, 50) // Show first 50 jobs when no search
-    const term = searchTerm.toLowerCase()
+    if (!inputValue) return jobs.slice(0, 50)
+    const term = inputValue.toLowerCase()
     return jobs.filter((job) => job.toLowerCase().includes(term)).slice(0, 50)
-  }, [jobs, searchTerm])
-
-  const selectedJob = value
+  }, [jobs, inputValue])
 
   return (
     <div className="relative">
       <div className="relative">
         <input
           type="text"
-          value={selectedJob}
+          value={inputValue}
           onChange={(e) => {
-            setSearchTerm(e.target.value)
-            // Don't set isOpen(true) on typing - only on focus
-            if (!e.target.value) {
-              onChange('')
-            }
+            const nextValue = e.target.value
+            setInputValue(nextValue)
+            onChange(nextValue)
+            setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
@@ -71,12 +72,12 @@ function JobSearchDropdown({
           placeholder="Click to search job titles..."
           autoComplete="off"
         />
-        {selectedJob && (
+        {inputValue && (
           <button
             type="button"
             onClick={() => {
               onChange('')
-              setSearchTerm('')
+              setInputValue('')
             }}
             className="absolute right-3 text-violet-300 hover:text-white transition"
             style={{ top: '50%', transform: 'translateY(-50%)' }}
@@ -97,7 +98,7 @@ function JobSearchDropdown({
                 type="button"
                 onClick={() => {
                   onChange(job)
-                  setSearchTerm('')
+                  setInputValue(job)
                   setIsOpen(false)
                 }}
                 className="w-full px-4 py-3 text-left text-white/90 hover:bg-violet-500/30 hover:text-white transition text-base md:text-lg"

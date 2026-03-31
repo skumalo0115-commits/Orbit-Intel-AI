@@ -5,14 +5,29 @@ import re
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+from backend.database.config import get_settings
+
 
 
 class AIPipeline:
     labels = ["Invoice", "CV", "Contract", "Report", "Financial document", "Unknown"]
 
     def __init__(self) -> None:
-        self.openrouter_api_key = (os.getenv("OPENROUTER_API_KEY") or "").strip()
-        self.openrouter_model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-4o-mini").strip()
+        settings = get_settings()
+        self.openrouter_api_key = (
+            settings.openrouter_api_key
+            or os.getenv("OPENROUTER_API_KEY")
+            or settings.openai_api_key
+            or os.getenv("OPENAI_API_KEY")
+            or ""
+        ).strip()
+        self.openrouter_model = (
+            settings.openrouter_model
+            or os.getenv("OPENROUTER_MODEL")
+            or settings.openai_model
+            or os.getenv("OPENAI_MODEL")
+            or "openai/gpt-4o-mini"
+        ).strip()
         self.profile_map: dict[str, list[str]] = {
             # Technology & Software
             "Software Engineer": ["python", "java", "javascript", "react", "node", "api", "git", "c++", "software", "backend", "frontend"],

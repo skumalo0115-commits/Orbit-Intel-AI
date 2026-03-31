@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     upload_dir: str = "backend/uploads"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-4o-mini"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
