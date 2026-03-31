@@ -182,92 +182,13 @@ class AIPipeline:
     def analyze(self, text: str, profile_context: dict[str, str] | None = None) -> dict[str, Any]:
         trimmed = (text or "")[:9000]
         if not trimmed.strip():
-            return {
-                "summary": "The CV could not be read clearly. Add a structured profile, measurable achievements, and role-specific skills.",
-                "classification": "Unknown",
-                "entities": [],
-                "embeddings": [],
-                "insights": {
-                    "word_count": 0,
-                    "entity_count": 0,
-                    "contains_financial_signals": False,
-                    "analysis_provider": "builtin-ai",
-                    "recommended_professions": ["General Professional Role"],
-                    "profession_scores": [{"name": "General Professional Role", "score": 60, "reason": "Limited readable signals found."}],
-                },
-            }
+            raise RuntimeError("The uploaded CV could not be read clearly enough for OpenRouter analysis.")
 
-        context = profile_context or {}
-
-        try:
-            entities = self._entities(trimmed)
-            research = self._research_target_role(context)
-            classification = self._classify(trimmed)
-            career = self._career_insights(trimmed, context, research)
-            summary = self._compose_career_summary(career, context, research)
-
-            if self.openrouter_api_key:
-                llm_summary = self._generate_openrouter_summary(
-                    cv_text=trimmed,
-                    base_summary=summary,
-                    classification=classification,
-                    career=career,
-                    profile_context=context,
-                )
-                if llm_summary:
-                    summary = llm_summary
-
-            insights = {
-                "word_count": len(trimmed.split()),
-                "entity_count": len(entities),
-                "contains_financial_signals": any("$" in token for token in trimmed.split()),
-                "web_research": research,
-                "analysis_provider": "openrouter" if self.openrouter_api_key else "builtin-ai",
-                **career,
-            }
-
-            return {
-                "summary": summary,
-                "classification": classification,
-                "entities": entities,
-                "embeddings": [],
-                "insights": insights,
-            }
-        except Exception as exc:  # noqa: BLE001
-            fallback_career = {
-                "recommended_professions": ["General Professional Role"],
-                "profession_scores": [{"name": "General Professional Role", "score": 58, "reason": "Fallback analysis was used due to an internal scoring issue."}],
-                "missing_for_top": ["quantified achievements", "role-specific keywords", "tools and frameworks"],
-                "transferable_strengths": [],
-                "target_alignment": "Fallback alignment generated due to a temporary analysis issue.",
-                "target_fit_percent": 58,
-                "cv_strengths_for_target": ["General professional profile detected"],
-                "cv_gaps_for_target": ["target-role keyword coverage", "impact metrics", "evidence depth"],
-                "research_query": "",
-                "research_source": "",
-            }
-            return {
-                "summary": (
-                    "- Analysis ran in safe fallback mode due to a temporary internal issue.\n"
-                    "- Please retry once; if the issue persists, review uploaded CV text quality and profile inputs.\n"
-                    "- Improve role-specific keyword coverage, quantified achievements, and tools alignment for better match confidence."
-                ),
-                "classification": "CV",
-                "entities": [],
-                "embeddings": [],
-                "insights": {
-                    "word_count": len(trimmed.split()),
-                    "entity_count": 0,
-                    "contains_financial_signals": any("$" in token for token in trimmed.split()),
-                    "analysis_provider": "builtin-ai",
-                    "analysis_fallback_reason": f"internal-error: {exc}",
-                    **fallback_career,
-                },
-            }
+        return self._analyze_with_openrouter(trimmed, profile_context or {})
 
     def _call_openrouter(self, system_prompt: str, user_prompt: str, temperature: float = 0.4) -> str:
         if not self.openrouter_api_key:
-            return ""
+            raise RuntimeError("OpenRouter is not configured on the backend.")
 
         payload = {
             "model": self.openrouter_model,
@@ -295,12 +216,135 @@ class AIPipeline:
                 data = json.loads(response.read().decode("utf-8"))
             choices = data.get("choices") or []
             if not choices:
-                return ""
+                raise RuntimeError("OpenRouter returned no choices.")
             message = choices[0].get("message") or {}
             content = (message.get("content") or "").strip()
+            if not content:
+                raise RuntimeError("OpenRouter returned an empty response.")
             return content
-        except Exception:
-            return ""
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(f"OpenRouter request failed: {exc}") from exc
+
+    def _parse_json_response(self, raw_content: str) -> dict[str, Any]:
+        content = (raw_content or "").strip()
+        if not content:
+            raise RuntimeError("OpenRouter returned an empty JSON payload.")
+
+        if content.startswith("```"):
+            content = re.sub(r"^```(?:json)?\s*", "", content)
+            content = re.sub(r"\s*```$", "", content)
+
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", content, re.DOTALL)
+            if not match:
+                raise RuntimeError("OpenRouter returned invalid JSON.") from None
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("OpenRouter returned malformed JSON.") from exc
+
+    def _analyze_with_openrouter(self, cv_text: str, profile_context: dict[str, str]) -> dict[str, Any]:
+        skills = (profile_context.get("skills") or "").strip()
+        target_job_title = (profile_context.get("target_job_title") or "").strip()
+        target_job_description = (profile_context.get("target_job_description") or "").strip()
+
+        prompt = (
+            "Analyze this CV for career fit using the uploaded CV text plus the user's target-role inputs. "
+            "Return strict JSON only with this exact top-level shape: "
+            "{summary, classification, entities, insights}. "
+            "The summary must be markdown bullet points. "
+            "The classification should be 'CV'. "
+            "entities must be an array of objects with text and type. "
+            "insights must include: "
+            "target_job_title, target_fit_percent, target_alignment, matched_requirements, missing_requirements, "
+            "cv_strengths_for_target, cv_gaps_for_target, recommended_professions, profession_scores, "
+            "alternative_role, evidence_lines, study_plan. "
+            "profession_scores must be an array of 3 objects with name, score, and reason. "
+            "Use the CV plus the target job title and target job description as the real source of truth. "
+            "Do not invent experience that is not supported by the CV. "
+            "If the target role is weakly specified, say that clearly in target_alignment.\n\n"
+            f"Skills & Expertise: {skills or 'Not provided'}\n"
+            f"Target Job Title: {target_job_title or 'Not provided'}\n"
+            f"Target Job Description: {target_job_description or 'Not provided'}\n"
+            f"Uploaded CV Text:\n{cv_text[:8000]}"
+        )
+
+        raw = self._call_openrouter(
+            system_prompt=(
+                "You are an expert CV and career-fit analyst. "
+                "Return only valid JSON with no commentary outside the JSON."
+            ),
+            user_prompt=prompt,
+            temperature=0.2,
+        )
+        result = self._parse_json_response(raw)
+
+        entities_raw = result.get("entities") if isinstance(result.get("entities"), list) else []
+        entities = [
+            {
+                "text": str(item.get("text") or "").strip(),
+                "type": str(item.get("type") or "UNKNOWN").strip().upper(),
+                **({"score": float(item.get("score"))} if isinstance(item, dict) and item.get("score") is not None else {}),
+            }
+            for item in entities_raw
+            if isinstance(item, dict) and str(item.get("text") or "").strip()
+        ]
+
+        insights_raw = result.get("insights") if isinstance(result.get("insights"), dict) else {}
+        profession_scores_raw = insights_raw.get("profession_scores") if isinstance(insights_raw.get("profession_scores"), list) else []
+        profession_scores = [
+            {
+                "name": str(item.get("name") or "").strip(),
+                "score": max(0, min(100, int(float(item.get("score") or 0)))),
+                "reason": str(item.get("reason") or "").strip(),
+            }
+            for item in profession_scores_raw
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ][:3]
+
+        recommended_professions = [
+            str(item).strip()
+            for item in (insights_raw.get("recommended_professions") or [])
+            if str(item).strip()
+        ]
+        if not recommended_professions:
+            recommended_professions = [item["name"] for item in profession_scores]
+
+        insights = {
+            "analysis_provider": "openrouter",
+            "word_count": len(cv_text.split()),
+            "entity_count": len(entities),
+            "target_job_title": str(insights_raw.get("target_job_title") or target_job_title).strip(),
+            "target_fit_percent": max(0, min(100, int(float(insights_raw.get("target_fit_percent") or 0)))),
+            "target_alignment": str(insights_raw.get("target_alignment") or "").strip(),
+            "matched_requirements": [str(item).strip() for item in (insights_raw.get("matched_requirements") or []) if str(item).strip()],
+            "missing_requirements": [str(item).strip() for item in (insights_raw.get("missing_requirements") or []) if str(item).strip()],
+            "cv_strengths_for_target": [str(item).strip() for item in (insights_raw.get("cv_strengths_for_target") or []) if str(item).strip()],
+            "cv_gaps_for_target": [str(item).strip() for item in (insights_raw.get("cv_gaps_for_target") or []) if str(item).strip()],
+            "recommended_professions": recommended_professions,
+            "profession_scores": profession_scores,
+            "alternative_role": str(insights_raw.get("alternative_role") or "").strip(),
+            "evidence_lines": [str(item).strip() for item in (insights_raw.get("evidence_lines") or []) if str(item).strip()],
+            "study_plan": [str(item).strip() for item in (insights_raw.get("study_plan") or []) if str(item).strip()],
+        }
+
+        summary = str(result.get("summary") or "").strip()
+        if not summary:
+            raise RuntimeError("OpenRouter analysis returned no summary.")
+
+        classification = str(result.get("classification") or "CV").strip() or "CV"
+
+        return {
+            "summary": summary,
+            "classification": classification,
+            "entities": entities,
+            "embeddings": [],
+            "insights": insights,
+        }
 
     def _generate_openrouter_summary(
         self,
@@ -680,64 +724,22 @@ class AIPipeline:
 
 
     def answer_question(self, question: str, cv_text: str, analysis_insights: dict[str, Any] | None = None, summary: str = "") -> str:
-        q = (question or "").strip().lower()
-        insights = analysis_insights or {}
+        if not question.strip():
+            raise RuntimeError("Please ask a question before sending it to OpenRouter.")
 
-        if self.openrouter_api_key and question.strip():
-            prompt = (
-                "Answer the user's CV question using only the provided analysis context. "
-                "If context is weak, say so briefly and give practical next steps.\n\n"
-                f"Question: {question}\n"
-                f"Insights JSON: {json.dumps(insights)}\n"
-                f"Summary: {summary}\n"
-                f"CV excerpt: {(cv_text or '')[:2200]}"
-            )
-            llm_answer = self._call_openrouter(
-                system_prompt="You are a pragmatic career coach. Keep responses under 120 words.",
-                user_prompt=prompt,
-                temperature=0.3,
-            )
-            if llm_answer:
-                return llm_answer
+        prompt = (
+            "Answer the user's career question using only the uploaded CV text and the prior OpenRouter analysis context. "
+            "Be direct, useful, and specific. Keep the answer under 140 words.\n\n"
+            f"Question: {question}\n"
+            f"Analysis Summary: {summary}\n"
+            f"Analysis Insights JSON: {json.dumps(analysis_insights or {})}\n"
+            f"Uploaded CV Text Excerpt: {(cv_text or '')[:2600]}"
+        )
 
-        top_scores = insights.get("profession_scores") or []
-        top_role = top_scores[0]["name"] if top_scores else "General Professional Role"
-        top_score = top_scores[0]["score"] if top_scores else 55
-        target_fit = int(insights.get("target_fit_percent") or top_score)
-        strengths = insights.get("cv_strengths_for_target") or []
-        gaps = insights.get("cv_gaps_for_target") or []
-        missing = insights.get("missing_requirements") or []
-        evidence = insights.get("evidence_lines") or []
-        alternative = insights.get("alternative_role") or "General Professional Role"
-
-        if any(token in q for token in ["fit", "match", "qualified", "am i good", "suitable"]):
-            return (
-                f"Based on the scanned CV, your current fit is about {target_fit}% for the requested role. "
-                f"Your strongest aligned track right now is {top_role} ({top_score}%). "
-                f"Key evidence: {', '.join(strengths[:4]) if strengths else 'limited direct evidence'}; "
-                f"main gaps: {', '.join((missing or gaps)[:4]) if (missing or gaps) else 'no major gaps detected yet'}."
-            )
-
-        if any(token in q for token in ["improve", "improvement", "fix", "missing", "lacking", "work on"]):
-            steps: list[str] = []
-            if missing:
-                steps.append(f"close role gaps first: {', '.join(missing[:4])}")
-            if not evidence:
-                steps.append("add achievement bullets with measurable outcomes")
-            steps.append("add 2-3 project bullets mapped to target responsibilities")
-            steps.append("prepare STAR stories for your strongest projects")
-            return "To improve your CV fit quickly, " + "; ".join(steps) + "."
-
-        if any(token in q for token in ["alternative", "other role", "different job"]):
-            return f"A strong alternative path from your scanned CV is {alternative}. This is recommended when your target-role requirement coverage is still low."
-
-        if any(token in q for token in ["evidence", "where", "why", "proof"]):
-            return f"The strongest CV evidence used in scoring: {' | '.join(evidence[:2]) if evidence else 'No strong proof lines were found; add clearer achievement bullets.'}"
-
-        return (
-            f"Short answer: your current strongest role is {top_role} ({top_score}%), and target-role fit is {target_fit}%. "
-            f"Prioritize these gaps: {', '.join((missing or gaps)[:3]) if (missing or gaps) else 'none highlighted'}. "
-            f"Then strengthen with quantified impact statements and role-specific project evidence."
+        return self._call_openrouter(
+            system_prompt="You are an expert CV coach and job-fit analyst. Return only the answer text.",
+            user_prompt=prompt,
+            temperature=0.3,
         )
 
 

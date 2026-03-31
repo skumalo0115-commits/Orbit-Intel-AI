@@ -134,15 +134,19 @@ def ask_question(
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unable to read document text for Q&A: {exc}") from exc
 
     record = db.query(Analysis).filter(Analysis.document_id == doc.id).first()
-    if record:
-        insights = record.insights or {}
-        summary = record.summary or ""
-    else:
-        generated = ai_pipeline.analyze(text, profile_context={})
-        insights = generated.get("insights") or {}
-        summary = generated.get("summary") or ""
+    try:
+        if record:
+            insights = record.insights or {}
+            summary = record.summary or ""
+        else:
+            generated = ai_pipeline.analyze(text, profile_context={})
+            insights = generated.get("insights") or {}
+            summary = generated.get("summary") or ""
 
-    answer = ai_pipeline.answer_question(payload.question, text, analysis_insights=insights, summary=summary)
+        answer = ai_pipeline.answer_question(payload.question, text, analysis_insights=insights, summary=summary)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
     return {
         "question": payload.question,
         "answer": answer,
