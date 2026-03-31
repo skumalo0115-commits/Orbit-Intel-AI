@@ -28,7 +28,7 @@ export default function Navbar({ onHome, onSignOut, profileInitial }: NavbarProp
       initial={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       transition={{ duration: 0.5 }}
-      className="glass-card h-[72px] px-6 flex justify-between items-center fixed top-4 left-4 right-4 z-50 border-b border-cyan-300/25"
+      className="fixed top-4 left-4 right-4 z-50 flex h-[72px] items-center justify-between rounded-[28px] border border-violet-300/15 bg-[linear-gradient(180deg,rgba(8,8,14,0.82),rgba(18,10,30,0.76))] px-6 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur-md"
     >
       <div className="flex items-center gap-3">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}>
@@ -47,7 +47,7 @@ export default function Navbar({ onHome, onSignOut, profileInitial }: NavbarProp
             whileHover={{ scale: 1.14, boxShadow: '0 0 24px rgba(34,211,238,0.55)' }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setOpen((prev) => !prev)}
-            className="w-10 h-10 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center text-sm font-semibold text-white shadow-neon"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/12 text-sm font-semibold text-white shadow-neon backdrop-blur-md"
           >
             {profileInitial}
           </motion.button>
@@ -56,7 +56,7 @@ export default function Navbar({ onHome, onSignOut, profileInitial }: NavbarProp
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute right-0 mt-2 glass-card border border-violet-300/30 rounded-xl p-2 min-w-[150px]"
+              className="absolute right-0 mt-2 min-w-[150px] rounded-xl border border-violet-300/20 bg-[linear-gradient(180deg,rgba(9,9,15,0.94),rgba(19,11,30,0.92))] p-2 backdrop-blur-md"
             >
               <button
                 onClick={() => {
