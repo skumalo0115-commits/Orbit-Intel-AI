@@ -24,7 +24,6 @@ interface SummaryPanelProps {
 
 export default function SummaryPanel({ summary, insights, targetJobTitle, classification }: SummaryPanelProps) {
   const targetFit = insights?.target_fit_percent ?? 0
-  const strengths = insights?.cv_strengths_for_target ?? []
   const gaps = insights?.cv_gaps_for_target ?? []
   const missing = insights?.missing_requirements ?? []
   const matched = insights?.matched_requirements ?? []
@@ -188,12 +187,6 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
           <p className="text-white/80 text-sm">
             Consider exploring: <strong className="text-violet-300">{alternativeRole}</strong>
           </p>
-        </div>
-      )}
-
-      {summary && (
-        <div className="pt-3 border-t border-white/10">
-          <p className="text-white/70 text-sm whitespace-pre-line">{summary}</p>
         </div>
       )}
 

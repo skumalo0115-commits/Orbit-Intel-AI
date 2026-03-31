@@ -180,6 +180,7 @@ export default function DashboardPage({ onSelect }: { onSelect: (id: number) => 
         "linear-gradient(rgba(5,8,18,0.62), rgba(5,8,18,0.72)), url('https://images.unsplash.com/photo-1581094271901-8022df4466f9?auto=format&fit=crop&w=2000&q=80')",
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
     }),
     []
   )
