@@ -277,8 +277,13 @@ class AIPipeline:
             "insights must include: "
             "target_job_title, target_fit_percent, target_alignment, matched_requirements, missing_requirements, "
             "cv_strengths_for_target, cv_gaps_for_target, recommended_professions, profession_scores, "
-            "alternative_role, evidence_lines, study_plan. "
+            "alternative_role, evidence_lines, study_plan, cv_improvement_priorities, exact_cv_additions, "
+            "ats_keywords_to_add, project_suggestions. "
             "profession_scores must be an array of 3 objects with name, score, and reason. "
+            "Calibrate the percentages realistically from the CV evidence, not from generic optimism. "
+            "If the target role is Software Engineer, focus your improvement advice on what would actually improve hiring chances for that role. "
+            "exact_cv_additions must be short, concrete bullet ideas the user could actually add or adapt into the CV. "
+            "cv_improvement_priorities must be the highest-impact fixes first. "
             "Use the CV plus the target job title and target job description as the real source of truth. "
             "Do not invent experience that is not supported by the CV. "
             "If the target role is weakly specified, say that clearly in target_alignment.\n\n"
@@ -345,6 +350,10 @@ class AIPipeline:
             "alternative_role": str(insights_raw.get("alternative_role") or "").strip(),
             "evidence_lines": [str(item).strip() for item in (insights_raw.get("evidence_lines") or []) if str(item).strip()],
             "study_plan": [str(item).strip() for item in (insights_raw.get("study_plan") or []) if str(item).strip()],
+            "cv_improvement_priorities": [str(item).strip() for item in (insights_raw.get("cv_improvement_priorities") or []) if str(item).strip()],
+            "exact_cv_additions": [str(item).strip() for item in (insights_raw.get("exact_cv_additions") or []) if str(item).strip()],
+            "ats_keywords_to_add": [str(item).strip() for item in (insights_raw.get("ats_keywords_to_add") or []) if str(item).strip()],
+            "project_suggestions": [str(item).strip() for item in (insights_raw.get("project_suggestions") or []) if str(item).strip()],
         }
 
         summary = str(result.get("summary") or "").strip()
@@ -744,7 +753,8 @@ class AIPipeline:
 
         prompt = (
             "Answer the user's career question using only the uploaded CV text and the prior OpenRouter analysis context. "
-            "Be direct, useful, and specific. Keep the answer under 140 words.\n\n"
+            "Be direct, useful, and specific. If the user asks how to improve the CV, give exact bullet ideas, keywords, and wording suggestions they can actually add. "
+            "Keep the answer under 180 words.\n\n"
             f"Question: {question}\n"
             f"Analysis Summary: {summary}\n"
             f"Analysis Insights JSON: {json.dumps(analysis_insights or {})}\n"

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { BookOpen, Briefcase, CheckCircle, Target, TrendingUp, XCircle } from 'lucide-react'
+import { BookOpen, Briefcase, CheckCircle, ListChecks, PenSquare, Target, TrendingUp } from 'lucide-react'
 
 interface Insights {
   target_fit_percent?: number
@@ -10,6 +10,10 @@ interface Insights {
   alternative_role?: string
   target_job_title?: string
   target_alignment?: string
+  cv_improvement_priorities?: string[]
+  exact_cv_additions?: string[]
+  ats_keywords_to_add?: string[]
+  project_suggestions?: string[]
 }
 
 interface SummaryPanelProps {
@@ -26,6 +30,10 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
   const missing = insights?.missing_requirements ?? []
   const matched = insights?.matched_requirements ?? []
   const alternativeRole = insights?.alternative_role
+  const improvementPriorities = insights?.cv_improvement_priorities ?? []
+  const exactCvAdditions = insights?.exact_cv_additions ?? []
+  const atsKeywords = insights?.ats_keywords_to_add ?? []
+  const projectSuggestions = insights?.project_suggestions ?? []
 
   const getFitColor = (percent: number) => {
     if (percent >= 80) return 'text-green-400'
@@ -110,13 +118,80 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
         <div>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="text-cyan-400" size={18} />
-            <h4 className="text-white font-medium">Your Strengths</h4>
+            <h4 className="text-white font-medium">Strong Evidence Found In Your CV</h4>
           </div>
           <ul className="space-y-1">
             {strengths.slice(0, 5).map((strength, idx) => (
               <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
-                <span className="text-cyan-400 mt-1">•</span>
+                <span className="text-cyan-400 mt-1">-</span>
                 {strength}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {improvementPriorities.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <ListChecks className="text-yellow-400" size={18} />
+            <h4 className="text-white font-medium">Highest-Impact CV Fixes</h4>
+          </div>
+          <ul className="space-y-1">
+            {improvementPriorities.slice(0, 5).map((item, idx) => (
+              <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
+                <span className="text-yellow-400 mt-1">-</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {exactCvAdditions.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <PenSquare className="text-cyan-300" size={18} />
+            <h4 className="text-white font-medium">Exact CV Bullet Ideas To Add</h4>
+          </div>
+          <ul className="space-y-1">
+            {exactCvAdditions.slice(0, 5).map((item, idx) => (
+              <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
+                <span className="text-cyan-300 mt-1">-</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {atsKeywords.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="text-green-400" size={18} />
+            <h4 className="text-white font-medium">ATS Keywords To Work Into Your CV</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {atsKeywords.slice(0, 10).map((keyword) => (
+              <span key={keyword} className="px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 text-sm border border-cyan-400/25">
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {projectSuggestions.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <BookOpen className="text-violet-300" size={18} />
+            <h4 className="text-white font-medium">Projects That Would Strengthen Your Fit</h4>
+          </div>
+          <ul className="space-y-1">
+            {projectSuggestions.slice(0, 4).map((item, idx) => (
+              <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
+                <span className="text-violet-300 mt-1">-</span>
+                {item}
               </li>
             ))}
           </ul>
@@ -127,12 +202,12 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
         <div>
           <div className="flex items-center gap-2 mb-2">
             <BookOpen className="text-yellow-400" size={18} />
-            <h4 className="text-white font-medium">Areas to Improve</h4>
+            <h4 className="text-white font-medium">Role Gaps The Model Found</h4>
           </div>
           <ul className="space-y-1">
             {gaps.slice(0, 5).map((gap, idx) => (
               <li key={idx} className="text-white/70 text-sm flex items-start gap-2">
-                <span className="text-yellow-400 mt-1">•</span>
+                <span className="text-yellow-400 mt-1">-</span>
                 {gap}
               </li>
             ))}
@@ -157,7 +232,7 @@ export default function SummaryPanel({ summary, insights, targetJobTitle, classi
           <p className="text-white/70 text-sm whitespace-pre-line">{summary}</p>
         </div>
       )}
-      
+
       {classification && (
         <p className="text-lg text-cyan-300">Document Type: {classification}</p>
       )}

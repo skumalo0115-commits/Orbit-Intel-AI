@@ -13,15 +13,23 @@ type ProfessionScore = {
   reason: string
 }
 
+type AnalysisInsights = {
+  recommended_professions?: string[]
+  profession_scores?: ProfessionScore[]
+  target_job_title?: string
+  target_fit_percent?: number
+  cv_improvement_priorities?: string[]
+  exact_cv_additions?: string[]
+  ats_keywords_to_add?: string[]
+  project_suggestions?: string[]
+  [key: string]: unknown
+}
+
 interface Analysis {
   summary: string
   classification: string
   entities: { text: string; type: string; score?: number }[]
-  insights?: {
-    recommended_professions?: string[]
-    profession_scores?: ProfessionScore[]
-    [key: string]: unknown
-  }
+  insights?: AnalysisInsights
 }
 
 type ProfileContext = {
@@ -242,12 +250,12 @@ export default function AnalysisPage() {
 
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: false, amount: 0.2 }} className="mt-4 rounded-2xl border border-cyan-300/30 p-4 bg-[linear-gradient(160deg,rgba(6,182,212,0.14),rgba(15,23,42,0.65)) ]">
                 <h3 className="text-2xl font-semibold mb-2">Career Assistant</h3>
-                <p className="text-sm text-[#cfd8ea] mb-3">Ask targeted questions about your fit, missing skills, and exact improvements for your CV.</p>
+                <p className="text-sm text-[#cfd8ea] mb-3">Ask targeted questions about your fit, missing skills, exact CV bullet improvements, ATS keywords, and how to improve your chances for the target role.</p>
                 <div className="flex flex-col md:flex-row gap-2">
                   <input
                     value={assistantQuestion}
                     onChange={(e) => setAssistantQuestion(e.target.value)}
-                    placeholder="Example: Am I fit for the target role and what should I improve first?"
+                    placeholder="Example: Give me 4 exact bullet points to add for a Software Engineer CV."
                     className="flex-1 rounded-xl border border-white/25 bg-white/10 p-3 text-sm"
                   />
                   <button
