@@ -1,34 +1,17 @@
 import re
 import secrets
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.database.config import get_settings
 from backend.database.session import get_db
 from backend.models.user import User
-from backend.schemas.auth import (
-    ForgotPasswordRequest,
-    ForgotUsernameRequest,
-    GoogleAuthRequest,
-    LoginRequest,
-    MessageResponse,
-    RegisterRequest,
-    ResetPasswordRequest,
-    TokenResponse,
-)
-from backend.services.email import EmailDeliveryError, send_password_reset_email, send_username_recovery_email, send_welcome_email
+from backend.schemas.auth import GoogleAuthRequest, LoginRequest, RegisterRequest, TokenResponse
+from backend.services.email import email_delivery_is_configured, send_welcome_email
 from backend.services.firebase import verify_firebase_id_token
-from backend.services.security import (
-    create_access_token,
-    create_password_reset_token,
-    decode_password_reset_token,
-    hash_password,
-    verify_password,
-)
+from backend.services.security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-settings = get_settings()
 
 
 def _token_response(user: User) -> TokenResponse:
@@ -69,7 +52,9 @@ def register(payload: RegisterRequest, background_tasks: BackgroundTasks, db: Se
     db.commit()
     db.refresh(user)
 
-    background_tasks.add_task(send_welcome_email, email, username)
+    if email_delivery_is_configured():
+        background_tasks.add_task(send_welcome_email, email, username)
+
     return _token_response(user)
 
 
@@ -111,71 +96,8 @@ def login_with_google(
         db.add(user)
         db.commit()
         db.refresh(user)
-        background_tasks.add_task(send_welcome_email, email, username)
+
+        if email_delivery_is_configured():
+            background_tasks.add_task(send_welcome_email, email, username)
 
     return _token_response(user)
-
-
-@router.post("/forgot-password", response_model=MessageResponse)
-def forgot_password(
-    payload: ForgotPasswordRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    email = payload.email.strip().lower()
-    message = "If an account exists for that email, password reset instructions have been sent."
-    user = db.query(User).filter(User.email == email).first()
-
-    if not user:
-        return MessageResponse(message=message)
-
-    reset_token = create_password_reset_token(subject=email)
-    app_url = settings.frontend_app_url.strip().rstrip("/") or str(request.base_url).rstrip("/")
-    reset_link = f"{app_url}/reset-password?token={reset_token}"
-    try:
-        send_password_reset_email(
-            user.email,
-            user.username or user.email,
-            reset_link,
-        )
-    except EmailDeliveryError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-
-    return MessageResponse(message=message)
-
-
-@router.post("/forgot-username", response_model=MessageResponse)
-def forgot_username(
-    payload: ForgotUsernameRequest,
-    db: Session = Depends(get_db),
-):
-    email = payload.email.strip().lower()
-    message = "If an account exists for that email, a username reminder has been sent."
-    user = db.query(User).filter(User.email == email).first()
-
-    if not user or not user.username:
-        return MessageResponse(message=message)
-
-    try:
-        send_username_recovery_email(user.email, user.username)
-    except EmailDeliveryError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    return MessageResponse(message=message)
-
-
-@router.post("/reset-password", response_model=MessageResponse)
-def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-    try:
-        email = decode_password_reset_token(payload.token).strip().lower()
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This password reset link is invalid or expired.") from exc
-
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    user.password_hash = hash_password(payload.new_password)
-    db.add(user)
-    db.commit()
-
-    return MessageResponse(message="Password updated successfully. You can log in now.")

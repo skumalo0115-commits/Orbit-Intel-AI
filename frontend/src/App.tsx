@@ -12,7 +12,7 @@ import LandingPage from './pages/LandingPage'
 import api from './services/api'
 import { getFirebaseAuth, googleProvider } from './services/firebase'
 
-type AuthMode = 'login' | 'register' | 'forgot-password' | 'forgot-username'
+type AuthMode = 'login' | 'register'
 
 type TokenPayload = {
   access_token: string
@@ -20,19 +20,11 @@ type TokenPayload = {
   email: string
 }
 
-type MessagePayload = {
-  message: string
-}
-
 type AuthCardProps = {
   mode: AuthMode
   onModeChange: (mode: AuthMode) => void
   onAuthenticated: (payload: TokenPayload) => void
   onClose: () => void
-}
-
-type ResetPasswordPageProps = {
-  onBackToLogin: () => void
 }
 
 function GoogleButton({
@@ -60,19 +52,15 @@ function GoogleButton({
 function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProps) {
   const [username, setUsername] = useState('')
   const [identifier, setIdentifier] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     setUsername('')
     setIdentifier('')
-    setEmail('')
     setPassword('')
     setError(null)
-    setSuccess(null)
   }, [mode])
 
   const completeAuth = (payload: TokenPayload) => {
@@ -89,7 +77,6 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     }
 
     setError(null)
-    setSuccess(null)
     setIsSubmitting(true)
 
     try {
@@ -111,7 +98,6 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
 
   const submitGoogle = async () => {
     setError(null)
-    setSuccess(null)
     setIsSubmitting(true)
 
     try {
@@ -134,19 +120,18 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
   }
 
   const submitRegister = async () => {
-    if (!username.trim() || !email.trim() || !password) {
+    if (!username.trim() || !identifier.trim() || !password) {
       setError('Please enter a username, email, and password.')
       return
     }
 
     setError(null)
-    setSuccess(null)
     setIsSubmitting(true)
 
     try {
       const response = await api.post<TokenPayload>('/auth/register', {
         username: username.trim(),
-        email: email.trim(),
+        email: identifier.trim(),
         password,
       })
       completeAuth(response.data)
@@ -160,32 +145,6 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
       setIsSubmitting(false)
     }
   }
-
-  const submitRecovery = async (endpoint: '/auth/forgot-password' | '/auth/forgot-username') => {
-    if (!email.trim()) {
-      setError('Please enter your email address.')
-      return
-    }
-
-    setError(null)
-    setSuccess(null)
-    setIsSubmitting(true)
-
-    try {
-      const response = await api.post<MessagePayload>(endpoint, { email: email.trim() })
-      setSuccess(response.data.message)
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail ?? 'We could not send that request right now.')
-      } else {
-        setError('We could not send that request right now.')
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const isRecoveryMode = mode === 'forgot-password' || mode === 'forgot-username'
 
   return (
     <div className="glass-card p-8 w-full max-w-md space-y-5 relative">
@@ -203,14 +162,10 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
         <h2 className="text-2xl font-semibold mt-2">
           {mode === 'login' && 'Welcome back'}
           {mode === 'register' && 'Create your account'}
-          {mode === 'forgot-password' && 'Reset your password'}
-          {mode === 'forgot-username' && 'Recover your username'}
         </h2>
         <p className="text-sm text-white/65 mt-2">
           {mode === 'login' && 'Sign in with your username or email, or use Google.'}
           {mode === 'register' && 'Register with email and password, or use Google if you prefer.'}
-          {mode === 'forgot-password' && 'Enter your email and we will send you a reset link.'}
-          {mode === 'forgot-username' && 'Enter your email and we will send your username reminder.'}
         </p>
       </div>
 
@@ -232,17 +187,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('forgot-password')}>
-              Forgot password?
-            </button>
-            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('forgot-username')}>
-              Forgot username?
-            </button>
-          </div>
-
           {error && <p className="text-sm text-red-300">{error}</p>}
-          {success && <p className="text-sm text-emerald-300">{success}</p>}
 
           <button
             type="button"
@@ -282,8 +227,8 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
               className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
               placeholder="Email"
               type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
             />
             <input
               className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
@@ -295,7 +240,6 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
           </div>
 
           {error && <p className="text-sm text-red-300">{error}</p>}
-          {success && <p className="text-sm text-emerald-300">{success}</p>}
 
           <button
             type="button"
@@ -321,141 +265,6 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
           </p>
         </>
       )}
-
-      {isRecoveryMode && (
-        <>
-          <input
-            className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-
-          {error && <p className="text-sm text-red-300">{error}</p>}
-          {success && <p className="text-sm text-emerald-300">{success}</p>}
-
-          <button
-            type="button"
-            className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
-            onClick={() => submitRecovery(mode === 'forgot-password' ? '/auth/forgot-password' : '/auth/forgot-username')}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Please wait...' : mode === 'forgot-password' ? 'Send reset link' : 'Send username reminder'}
-          </button>
-
-          <p className="text-sm text-white/70 text-center">
-            <button type="button" className="text-cyan-300 hover:text-cyan-200" onClick={() => onModeChange('login')}>
-              Back to login
-            </button>
-          </p>
-        </>
-      )}
-    </div>
-  )
-}
-
-function ResetPasswordPage({ onBackToLogin }: ResetPasswordPageProps) {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const token = useMemo(() => new URLSearchParams(location.search).get('token') ?? '', [location.search])
-
-  const submit = async () => {
-    if (!token) {
-      setError('This password reset link is missing a token.')
-      return
-    }
-
-    if (!password || !confirmPassword) {
-      setError('Please enter your new password twice.')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('The passwords do not match.')
-      return
-    }
-
-    setError(null)
-    setSuccess(null)
-    setIsSubmitting(true)
-
-    try {
-      const response = await api.post<MessagePayload>('/auth/reset-password', {
-        token,
-        new_password: password,
-      })
-      setSuccess(response.data.message)
-      setPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail ?? 'We could not reset your password.')
-      } else {
-        setError('We could not reset your password.')
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="glass-card p-8 w-full max-w-md space-y-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Orbit Intel-AI</p>
-          <h2 className="text-2xl font-semibold mt-2">Choose a new password</h2>
-          <p className="text-sm text-white/65 mt-2">Set a fresh password for your account, then head back to login.</p>
-        </div>
-
-        <div className="space-y-3">
-          <input
-            className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
-            type="password"
-            placeholder="New password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <input
-            className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 outline-none focus:border-cyan-300/60"
-            type="password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-300">{error}</p>}
-        {success && <p className="text-sm text-emerald-300">{success}</p>}
-
-        <button
-          type="button"
-          className="w-full rounded-xl bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 font-semibold py-2.5 transition disabled:opacity-70"
-          onClick={submit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Please wait...' : 'Update password'}
-        </button>
-
-        <div className="text-sm text-white/70 text-center">
-          <button
-            type="button"
-            className="text-cyan-300 hover:text-cyan-200"
-            onClick={() => {
-              onBackToLogin()
-              navigate('/auth')
-            }}
-          >
-            Back to login
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -466,7 +275,7 @@ export default function App() {
   const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>('login')
-  const showAmbientEffects = location.pathname === '/auth' || location.pathname === '/reset-password'
+  const showAmbientEffects = location.pathname === '/auth'
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -532,7 +341,6 @@ export default function App() {
                 )
               }
             />
-            <Route path="/reset-password" element={<ResetPasswordPage onBackToLogin={() => setAuthMode('login')} />} />
             <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onSelect={(id) => navigate(`/analysis/${id}`)} /> : <Navigate to="/auth" />} />
             <Route path="/analysis/:documentId" element={isAuthenticated ? <AnalysisPage /> : <Navigate to="/auth" />} />
             <Route path="/analysis" element={<Navigate to="/dashboard" />} />
