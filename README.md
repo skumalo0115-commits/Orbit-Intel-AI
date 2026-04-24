@@ -6,8 +6,15 @@ An end-to-end career guidance app that lets users upload a CV, compare it to a t
 
 ---
 
-## ✨ Core Features
+## 🌍 Live Demo
 
+- **Website:** https://orbit-intel-ai.vercel.app/ 
+- **Alternative Website:** https://orbit-intel.up.railway.app/
+- **Vercel-ready:** This repo now includes `vercel.json` plus a Vercel build step.
+
+---
+
+## ✨ Core Features
 - 🔐 Secure auth with local email/password login plus Firebase Google sign-in
 - 🔄 Account recovery flows for forgot password and forgot username
 - 📄 CV upload for PDF, DOCX, DOC, TXT, CSV, RTF, PNG, JPG, and JPEG
