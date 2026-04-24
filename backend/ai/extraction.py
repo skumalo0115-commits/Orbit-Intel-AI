@@ -1,4 +1,7 @@
+import os
+import tempfile
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 from docx import Document as DocxDocument
 from PIL import Image
@@ -7,6 +10,9 @@ from PIL import Image
 class TextExtractor:
     @staticmethod
     def extract(file_path: str) -> str:
+        if file_path.startswith("http://") or file_path.startswith("https://"):
+            return TextExtractor._extract_remote(file_path)
+
         path = Path(file_path)
         suffix = path.suffix.lower()
 
@@ -22,6 +28,27 @@ class TextExtractor:
         if suffix in {".png", ".jpg", ".jpeg"}:
             return TextExtractor._extract_image(path)
         raise ValueError("Unsupported file type")
+
+    @staticmethod
+    def _extract_remote(file_url: str) -> str:
+        suffix = Path(file_url.split("?", 1)[0]).suffix.lower()
+        headers = {}
+        blob_token = os.getenv("BLOB_READ_WRITE_TOKEN", "").strip()
+        if ".private.blob.vercel-storage.com/" in file_url and blob_token:
+            headers["Authorization"] = f"Bearer {blob_token}"
+
+        request = Request(file_url, headers=headers)
+        with urlopen(request) as response:
+            file_bytes = response.read()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_file.write(file_bytes)
+            temp_path = Path(temp_file.name)
+
+        try:
+            return TextExtractor.extract(str(temp_path))
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @staticmethod
     def _extract_pdf(path: Path) -> str:

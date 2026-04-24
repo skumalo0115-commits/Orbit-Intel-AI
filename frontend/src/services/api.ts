@@ -17,6 +17,7 @@ const getBaseUrlCandidates = (): string[] => {
 
   const candidates = [
     envBaseUrl,
+    `${origin}/api`,
     hostname === 'localhost' ? `${protocol}//localhost:8000` : `${protocol}//${hostname}:8000`,
     origin,
   ].filter((value): value is string => Boolean(value && value.length > 0))

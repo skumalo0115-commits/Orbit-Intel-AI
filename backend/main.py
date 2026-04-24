@@ -63,6 +63,7 @@ def env_check():
         "SMTP_SENDER_EMAIL": bool((os.getenv("SMTP_SENDER_EMAIL", "").strip() or settings.smtp_sender_email).strip()),
         "SMTP_USE_SSL": bool(str(os.getenv("SMTP_USE_SSL", "")).strip() or settings.smtp_use_ssl),
         "FRONTEND_APP_URL": bool((os.getenv("FRONTEND_APP_URL", "").strip() or settings.frontend_app_url).strip()),
+        "BLOB_READ_WRITE_TOKEN": bool((os.getenv("BLOB_READ_WRITE_TOKEN", "").strip() or settings.blob_read_write_token).strip()),
     }
 
     return {

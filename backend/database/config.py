@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     frontend_app_url: str = ""
     firebase_credentials_path: str = ""
     firebase_credentials_json: str = ""
+    blob_read_write_token: str = ""
 
     model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8")
 
