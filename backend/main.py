@@ -2,10 +2,11 @@ from pathlib import Path
 import json
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database.config import Settings
 from backend.database.session import Base, engine, ensure_user_schema
@@ -24,8 +25,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-Base.metadata.create_all(bind=engine)
-ensure_user_schema()
+database_startup_error = ""
+
+try:
+    Base.metadata.create_all(bind=engine)
+    ensure_user_schema()
+except Exception as exc:  # noqa: BLE001
+    database_startup_error = f"{type(exc).__name__}: {exc}"
+    print(f"[startup] Database initialization failed: {database_startup_error}")
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_exception_handler(_request: Request, exc: SQLAlchemyError):
+    print(f"[database] Request failed: {type(exc).__name__}: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database is not reachable. Check DATABASE_URL on the backend."},
+    )
 
 app.include_router(auth_router)
 app.include_router(documents_router)
@@ -50,7 +66,7 @@ def env_check():
 
     required = {
         "SECRET_KEY": bool(os.getenv("SECRET_KEY", "").strip()) and settings.secret_key != "change-me-in-production",
-        "DATABASE_URL": bool(os.getenv("DATABASE_URL", "").strip()),
+        "DATABASE_URL": bool(os.getenv("DATABASE_URL", "").strip()) and not database_startup_error,
     }
     optional = {
         "OPENROUTER_API_KEY": bool((os.getenv("OPENROUTER_API_KEY", "").strip() or settings.openrouter_api_key).strip()),
@@ -66,12 +82,14 @@ def env_check():
         "FIREBASE_CREDENTIALS_JSON": bool((os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip() or settings.firebase_credentials_json).strip()),
         "FIREBASE_CREDENTIALS_PATH": bool((os.getenv("FIREBASE_CREDENTIALS_PATH", "").strip() or settings.firebase_credentials_path).strip()),
         "BLOB_READ_WRITE_TOKEN": bool((os.getenv("BLOB_READ_WRITE_TOKEN", "").strip() or settings.blob_read_write_token).strip()),
+        "DATABASE_STARTUP_OK": not database_startup_error,
     }
 
     return {
         "ready": all(required.values()),
         "required": required,
         "optional": optional,
+        "database_startup_error": database_startup_error or None,
     }
 
 

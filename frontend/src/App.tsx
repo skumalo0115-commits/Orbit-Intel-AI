@@ -27,6 +27,39 @@ type AuthCardProps = {
   onClose: () => void
 }
 
+const getApiErrorMessage = (err: unknown, fallback: string) => {
+  if (!axios.isAxiosError(err)) {
+    return fallback
+  }
+
+  const detail = err.response?.data?.detail
+
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object' && 'msg' in item) return String(item.msg)
+        return ''
+      })
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  if (err.response?.status) {
+    return `${fallback} Server returned ${err.response.status}.`
+  }
+
+  if (err.message) {
+    return `${fallback} ${err.message}`
+  }
+
+  return fallback
+}
+
 function GoogleButton({
   label,
   onClick,
@@ -86,11 +119,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
       })
       completeAuth(response.data)
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail ?? 'Unable to reach API. Check backend and VITE_API_URL.')
-      } else {
-        setError('Unexpected error while logging in. Please try again.')
-      }
+      setError(getApiErrorMessage(err, 'Unable to reach API. Check backend and VITE_API_URL.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -108,7 +137,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
       completeAuth(response.data)
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail ?? 'Google sign-in could not be completed.')
+        setError(getApiErrorMessage(err, 'Google sign-in could not be completed.'))
       } else if (err instanceof Error) {
         setError(err.message)
       } else {
@@ -136,11 +165,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
       })
       completeAuth(response.data)
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail ?? 'We could not create your account right now.')
-      } else {
-        setError('We could not create your account right now.')
-      }
+      setError(getApiErrorMessage(err, 'We could not create your account right now.'))
     } finally {
       setIsSubmitting(false)
     }
