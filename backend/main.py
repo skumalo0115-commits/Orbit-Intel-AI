@@ -49,8 +49,8 @@ def env_check():
     settings = Settings()
 
     required = {
-        "SECRET_KEY": bool((os.getenv("SECRET_KEY", "").strip() or settings.secret_key).strip()),
-        "DATABASE_URL": bool((os.getenv("DATABASE_URL", "").strip() or settings.database_url).strip()),
+        "SECRET_KEY": bool(os.getenv("SECRET_KEY", "").strip()) and settings.secret_key != "change-me-in-production",
+        "DATABASE_URL": bool(os.getenv("DATABASE_URL", "").strip()),
     }
     optional = {
         "OPENROUTER_API_KEY": bool((os.getenv("OPENROUTER_API_KEY", "").strip() or settings.openrouter_api_key).strip()),
@@ -63,6 +63,8 @@ def env_check():
         "SMTP_SENDER_EMAIL": bool((os.getenv("SMTP_SENDER_EMAIL", "").strip() or settings.smtp_sender_email).strip()),
         "SMTP_USE_SSL": bool(str(os.getenv("SMTP_USE_SSL", "")).strip() or settings.smtp_use_ssl),
         "FRONTEND_APP_URL": bool((os.getenv("FRONTEND_APP_URL", "").strip() or settings.frontend_app_url).strip()),
+        "FIREBASE_CREDENTIALS_JSON": bool((os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip() or settings.firebase_credentials_json).strip()),
+        "FIREBASE_CREDENTIALS_PATH": bool((os.getenv("FIREBASE_CREDENTIALS_PATH", "").strip() or settings.firebase_credentials_path).strip()),
         "BLOB_READ_WRITE_TOKEN": bool((os.getenv("BLOB_READ_WRITE_TOKEN", "").strip() or settings.blob_read_write_token).strip()),
     }
 
