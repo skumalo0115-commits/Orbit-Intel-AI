@@ -43,9 +43,10 @@ async def database_exception_handler(_request: Request, exc: SQLAlchemyError):
         content={"detail": "Database is not reachable. Check DATABASE_URL on the backend."},
     )
 
-app.include_router(auth_router)
-app.include_router(documents_router)
-app.include_router(analysis_router)
+for api_prefix in ("", "/api"):
+    app.include_router(auth_router, prefix=api_prefix)
+    app.include_router(documents_router, prefix=api_prefix)
+    app.include_router(analysis_router, prefix=api_prefix)
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if frontend_dist.exists():

@@ -7,6 +7,7 @@ type RetryableConfig = InternalAxiosRequestConfig & {
 }
 
 const trimSlash = (value: string) => value.replace(/\/$/, '')
+const isLocalHost = (hostname: string) => ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname)
 
 const getBaseUrlCandidates = (): string[] => {
   const runtimeBaseUrl = window.__ORBIT_RUNTIME_CONFIG__?.VITE_API_URL?.trim()
@@ -18,7 +19,7 @@ const getBaseUrlCandidates = (): string[] => {
   const candidates = [
     envBaseUrl,
     `${origin}/api`,
-    hostname === 'localhost' ? `${protocol}//localhost:8000` : `${protocol}//${hostname}:8000`,
+    isLocalHost(hostname) ? `${protocol}//localhost:8000` : undefined,
     origin,
   ].filter((value): value is string => Boolean(value && value.length > 0))
 
@@ -78,7 +79,7 @@ api.interceptors.response.use(
     }
 
     const hasResponse = Boolean(error.response)
-    const retryableStatus = error.response?.status === 404 || error.response?.status === 502
+    const retryableStatus = error.response?.status === 404 || error.response?.status === 405 || error.response?.status === 502
     const shouldRetry = !hasResponse || retryableStatus
 
     if (!shouldRetry) {
