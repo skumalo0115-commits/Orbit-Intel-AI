@@ -193,18 +193,29 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     setIsSubmitting(true)
 
     try {
-      const firebaseAuth = getFirebaseAuth()
-      const result = await signInWithPopup(firebaseAuth, googleProvider)
+      if (!canUseGoogleSignIn()) {
+        const missing = missingFirebaseEnvKeys.join(', ')
+        setError(
+          `Google sign-in isn't configured yet. Please use email/password.${missing ? ` (Missing: ${missing})` : ''}`,
+        )
+        return
+      }
+
+      const firebaseAuth = getFirebaseAuthOrNull()
+      if (!firebaseAuth) {
+        setError(`Google sign-in isn't configured yet. Please use email/password.`)
+        return
+      }
+
+      const result = await signInWithPopup(firebaseAuth, getGoogleProvider())
       const idToken = await result.user.getIdToken()
       const response = await api.post<TokenPayload>('/api/auth/google', { id_token: idToken })
       completeAuth(response.data)
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(getApiErrorMessage(err, 'Google sign-in could not be completed.'))
-      } else if (err instanceof Error) {
-        setError(err.message)
       } else {
-        setError('Google sign-in could not be completed.')
+        setError('Google sign-in could not be completed. Please try email/password or try again.')
       }
     } finally {
       setIsSubmitting(false)
