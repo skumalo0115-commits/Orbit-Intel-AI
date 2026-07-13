@@ -26,13 +26,16 @@ export const firebaseEnabled = missingFirebaseEnvKeys.length === 0
 
 const firebaseApp = firebaseEnabled ? initializeApp(firebaseConfig) : null
 
-export const getFirebaseAuth = () => {
-  if (!firebaseApp) {
-    throw new Error(`Firebase Google sign-in is not configured yet. Missing: ${missingFirebaseEnvKeys.join(', ')}`)
-  }
+// Safe helpers: never throw here. UI should show a clean message instead of an internal error.
+export const canUseGoogleSignIn = () => firebaseEnabled
 
+export const getFirebaseAuthOrNull = () => {
+  if (!firebaseApp) return null
   return getAuth(firebaseApp)
 }
 
-export const googleProvider = new GoogleAuthProvider()
-googleProvider.setCustomParameters({ prompt: 'select_account' })
+export const getGoogleProvider = () => {
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  return provider
+}
