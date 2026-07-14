@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { signInWithPopup } from 'firebase/auth'
-import { Eye, EyeOff, Loader2, X } from 'lucide-react'
+import { Camera, Eye, EyeOff, KeyRound, Loader2, Save, Trash2, X } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import MouseGlow from './components/MouseGlow'
@@ -19,6 +19,12 @@ type TokenPayload = {
   access_token: string
   username: string
   email: string
+}
+
+type ProfileState = {
+  username: string
+  email: string
+  imageUrl: string
 }
 
 type AuthCardProps = {
@@ -423,12 +429,213 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
   )
 }
 
+function ProfileDialog({
+  isOpen,
+  profile,
+  profileInitial,
+  onClose,
+  onImageChange,
+}: {
+  isOpen: boolean
+  profile: ProfileState
+  profileInitial: string
+  onClose: () => void
+  onImageChange: (imageUrl: string) => void
+}) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmNewPassword('')
+    setShowCurrentPassword(false)
+    setShowNewPassword(false)
+    setShowConfirmPassword(false)
+    setStatusMessage(null)
+    setError(null)
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  const handleImageUpload = (file: File | undefined) => {
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.')
+      return
+    }
+
+    if (file.size > 1_500_000) {
+      setError('Please choose an image smaller than 1.5 MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onImageChange(reader.result)
+        setStatusMessage('Profile image updated.')
+        setError(null)
+      }
+    }
+    reader.onerror = () => setError('We could not read that image. Please try another one.')
+    reader.readAsDataURL(file)
+  }
+
+  const submitPasswordChange = async (event: FormEvent) => {
+    event.preventDefault()
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setError('Please fill in all password fields.')
+      setStatusMessage(null)
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.')
+      setStatusMessage(null)
+      return
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setError('New passwords do not match.')
+      setStatusMessage(null)
+      return
+    }
+
+    setIsSaving(true)
+    setError(null)
+    setStatusMessage(null)
+
+    try {
+      await api.post('/auth/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+      setStatusMessage('Password updated successfully.')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'We could not update your password.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-5">
+      <button type="button" className="absolute inset-0 bg-black/65 backdrop-blur-md" onClick={onClose} aria-label="Close profile" />
+      <div className="glass-card relative z-10 w-full max-w-lg overflow-hidden border border-cyan-300/20 p-7 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 h-9 w-9 rounded-full border border-white/20 bg-white/5 text-white/80 hover:bg-white/15 hover:text-white transition inline-flex items-center justify-center"
+          aria-label="Close profile"
+        >
+          <X size={17} />
+        </button>
+
+        <div className="flex flex-col items-center text-center">
+          <div className="relative">
+            <div className="h-28 w-28 overflow-hidden rounded-full border border-cyan-300/45 bg-cyan-300/12 shadow-[0_0_30px_rgba(34,211,238,0.25)] flex items-center justify-center text-4xl font-semibold text-white">
+              {profile.imageUrl ? <img src={profile.imageUrl} alt="Profile" className="h-full w-full object-cover" /> : profileInitial}
+            </div>
+            <label className="absolute bottom-1 right-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-cyan-300 text-slate-950 shadow-lg transition hover:bg-cyan-200">
+              <Camera size={18} />
+              <input type="file" accept="image/*" className="hidden" onChange={(event) => handleImageUpload(event.target.files?.[0])} />
+            </label>
+          </div>
+
+          <h2 className="mt-4 text-2xl font-semibold text-white">{profile.username || 'Your profile'}</h2>
+          <p className="text-sm text-white/60">{profile.email || 'Signed in'}</p>
+
+          {profile.imageUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                onImageChange('')
+                setStatusMessage('Profile image removed.')
+                setError(null)
+              }}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-pink-300/20 px-3 py-1.5 text-sm text-pink-200 hover:bg-pink-400/10"
+            >
+              <Trash2 size={14} /> Remove image
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={submitPasswordChange} className="mt-7 space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex items-center gap-2 text-cyan-200">
+            <KeyRound size={18} />
+            <h3 className="text-lg font-semibold text-white">Change password</h3>
+          </div>
+          <PasswordField
+            placeholder="Current password"
+            value={currentPassword}
+            autoComplete="current-password"
+            disabled={isSaving}
+            isVisible={showCurrentPassword}
+            onChange={setCurrentPassword}
+            onToggleVisibility={() => setShowCurrentPassword((current) => !current)}
+          />
+          <PasswordField
+            placeholder="New password"
+            value={newPassword}
+            autoComplete="new-password"
+            disabled={isSaving}
+            isVisible={showNewPassword}
+            onChange={setNewPassword}
+            onToggleVisibility={() => setShowNewPassword((current) => !current)}
+          />
+          <PasswordField
+            placeholder="Confirm new password"
+            value={confirmNewPassword}
+            autoComplete="new-password"
+            disabled={isSaving}
+            isVisible={showConfirmPassword}
+            onChange={setConfirmNewPassword}
+            onToggleVisibility={() => setShowConfirmPassword((current) => !current)}
+          />
+
+          {error && <p className="text-sm text-red-300">{error}</p>}
+          {statusMessage && <p className="text-sm text-emerald-300">{statusMessage}</p>}
+
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400/85 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+          >
+            {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
+            {isSaving ? 'Saving...' : 'Save password'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const { isAuthenticated, saveToken, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>('login')
+  const [profile, setProfile] = useState<ProfileState>(() => ({
+    username: localStorage.getItem('profile_username') || '',
+    email: localStorage.getItem('profile_email') || '',
+    imageUrl: localStorage.getItem('profile_image') || '',
+  }))
   const showAmbientEffects = location.pathname === '/auth'
 
   useEffect(() => {
@@ -439,22 +646,46 @@ export default function App() {
     saveToken(payload.access_token)
     localStorage.setItem('profile_username', payload.username)
     localStorage.setItem('profile_email', payload.email)
+    const savedImage = localStorage.getItem(`profile_image_${payload.email}`) || ''
+    if (savedImage) {
+      localStorage.setItem('profile_image', savedImage)
+    } else {
+      localStorage.removeItem('profile_image')
+    }
+    setProfile({ username: payload.username, email: payload.email, imageUrl: savedImage })
     setShowAuthModal(false)
     setAuthMode('login')
     navigate('/dashboard')
   }
 
   const profileInitial = useMemo(() => {
-    const username = localStorage.getItem('profile_username') || ''
-    const email = localStorage.getItem('profile_email') || ''
-    const seed = username || email
+    const seed = profile.username || profile.email
     return seed ? seed[0].toUpperCase() : 'U'
-  }, [isAuthenticated])
+  }, [profile.email, profile.username])
+
+  const updateProfileImage = (imageUrl: string) => {
+    if (imageUrl) {
+      localStorage.setItem('profile_image', imageUrl)
+      if (profile.email) {
+        localStorage.setItem(`profile_image_${profile.email}`, imageUrl)
+      }
+    } else {
+      localStorage.removeItem('profile_image')
+      if (profile.email) {
+        localStorage.removeItem(`profile_image_${profile.email}`)
+      }
+    }
+
+    setProfile((current) => ({ ...current, imageUrl }))
+  }
 
   const signOut = () => {
     logout()
     localStorage.removeItem('profile_email')
     localStorage.removeItem('profile_username')
+    localStorage.removeItem('profile_image')
+    setProfile({ username: '', email: '', imageUrl: '' })
+    setShowProfileDialog(false)
     setShowAuthModal(false)
     setAuthMode('login')
     navigate('/')
@@ -474,14 +705,35 @@ export default function App() {
     <>
       {showAmbientEffects && <SpaceBackground />}
       {showAmbientEffects && <MouseGlow />}
-      {isAuthenticated && location.pathname !== '/' && <Navbar onHome={() => navigate('/')} onSignOut={signOut} profileInitial={profileInitial} />}
+      {isAuthenticated && location.pathname !== '/' && (
+        <Navbar
+          onHome={() => navigate('/')}
+          onSignOut={signOut}
+          onOpenProfile={() => setShowProfileDialog(true)}
+          profileInitial={profileInitial}
+          profileImageUrl={profile.imageUrl}
+          profileUsername={profile.username}
+          profileEmail={profile.email}
+        />
+      )}
 
       <div className="min-h-screen">
         <main>
           <Routes>
             <Route
               path="/"
-              element={<LandingPage onEnter={() => (isAuthenticated ? navigate('/dashboard') : openAuth())} isAuthenticated={isAuthenticated} profileInitial={profileInitial} onSignOut={signOut} />}
+              element={
+                <LandingPage
+                  onEnter={() => (isAuthenticated ? navigate('/dashboard') : openAuth())}
+                  isAuthenticated={isAuthenticated}
+                  profileInitial={profileInitial}
+                  profileImageUrl={profile.imageUrl}
+                  profileUsername={profile.username}
+                  profileEmail={profile.email}
+                  onOpenProfile={() => setShowProfileDialog(true)}
+                  onSignOut={signOut}
+                />
+              }
             />
             <Route
               path="/auth"
@@ -510,6 +762,14 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <ProfileDialog
+        isOpen={showProfileDialog}
+        profile={profile}
+        profileInitial={profileInitial}
+        onClose={() => setShowProfileDialog(false)}
+        onImageChange={updateProfileImage}
+      />
     </>
   )
 }

@@ -16,11 +16,14 @@ const getBaseUrlCandidates = (): string[] => {
   const hostname = window.location.hostname
   const origin = window.location.origin
 
+  if (envBaseUrl) {
+    return [trimSlash(envBaseUrl)]
+  }
+
   const candidates = [
-    envBaseUrl,
     `${origin}/api`,
     isLocalHost(hostname) ? `${protocol}//localhost:8000` : undefined,
-    origin,
+    isLocalHost(hostname) ? origin : undefined,
   ].filter((value): value is string => Boolean(value && value.length > 0))
 
   return [...new Set(candidates.map(trimSlash))]
@@ -83,7 +86,7 @@ api.interceptors.response.use(
     }
 
     const hasResponse = Boolean(error.response)
-    const retryableStatus = error.response?.status === 404 || error.response?.status === 405 || error.response?.status === 502
+    const retryableStatus = error.response?.status === 404 || error.response?.status === 502
     const shouldRetry = !hasResponse || retryableStatus
 
     if (!shouldRetry) {

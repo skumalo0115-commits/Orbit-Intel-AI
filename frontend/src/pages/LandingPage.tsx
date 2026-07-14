@@ -13,6 +13,7 @@ import {
   Rocket,
   Sparkles,
   TrendingUp,
+  UserCircle,
   WandSparkles,
   Zap,
 } from 'lucide-react'
@@ -22,6 +23,10 @@ type LandingProps = {
   onEnter: () => void
   isAuthenticated: boolean
   profileInitial: string
+  profileImageUrl: string
+  profileUsername: string
+  profileEmail: string
+  onOpenProfile: () => void
   onSignOut: () => void
 }
 
@@ -166,7 +171,7 @@ function LandingFooter() {
   )
 }
 
-export default function LandingPage({ onEnter, isAuthenticated, profileInitial, onSignOut }: LandingProps) {
+export default function LandingPage({ onEnter, isAuthenticated, profileInitial, profileImageUrl, profileUsername, profileEmail, onOpenProfile, onSignOut }: LandingProps) {
   const { scrollY } = useScroll()
   const scrollOpacity = useTransform(scrollY, [0, 90], [1, 0])
   const scrollYPos = useTransform(scrollY, [0, 90], [0, 20])
@@ -210,13 +215,31 @@ export default function LandingPage({ onEnter, isAuthenticated, profileInitial, 
               whileHover={{ scale: 1.14, boxShadow: '0 0 24px rgba(34,211,238,0.55)' }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setOpenProfileMenu((prev) => !prev)}
-              className="w-12 h-12 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center text-xl font-semibold text-white shadow-neon"
+              className="w-12 h-12 rounded-full border border-cyan-300/50 bg-cyan-300/20 backdrop-blur-md flex items-center justify-center overflow-hidden text-xl font-semibold text-white shadow-neon"
             >
-              {profileInitial}
+              {profileImageUrl ? <img src={profileImageUrl} alt="" className="h-full w-full object-cover" /> : profileInitial}
             </motion.button>
 
             {openProfileMenu && (
-              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-2 glass-card border border-violet-300/30 rounded-xl p-2 min-w-[150px]">
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-3 glass-card border border-violet-300/30 rounded-2xl p-3 w-[250px]">
+                <div className="mb-2 flex items-center gap-3 rounded-xl bg-white/[0.06] p-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-cyan-300/35 bg-cyan-300/12 text-sm font-semibold">
+                    {profileImageUrl ? <img src={profileImageUrl} alt="" className="h-full w-full object-cover" /> : profileInitial}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{profileUsername || 'Your profile'}</p>
+                    <p className="truncate text-xs text-white/55">{profileEmail || 'Signed in'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setOpenProfileMenu(false)
+                    onOpenProfile()
+                  }}
+                  className="mb-1 w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-left"
+                >
+                  <UserCircle size={16} className="text-cyan-300" /> Profile
+                </button>
                 <button
                   onClick={() => {
                     setOpenProfileMenu(false)

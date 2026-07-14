@@ -9,6 +9,8 @@ settings = get_settings()
 
 def _normalize_database_url(database_url: str) -> str:
     """Normalize provider URLs for SQLAlchemy + psycopg (v3)."""
+    database_url = database_url.strip().strip("\"'")
+
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
 
@@ -18,7 +20,12 @@ def _normalize_database_url(database_url: str) -> str:
     return database_url
 
 
-engine = create_engine(_normalize_database_url(settings.database_url), future=True)
+engine = create_engine(
+    _normalize_database_url(settings.database_url),
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

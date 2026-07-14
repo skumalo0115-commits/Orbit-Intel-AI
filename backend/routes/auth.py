@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from backend.database.session import get_db
 from backend.models.user import User
-from backend.schemas.auth import GoogleAuthRequest, LoginRequest, RegisterRequest, TokenResponse
+from backend.schemas.auth import ChangePasswordRequest, GoogleAuthRequest, LoginRequest, MessageResponse, RegisterRequest, TokenResponse
 from backend.services.email import email_delivery_is_configured, send_welcome_email
+from backend.services.dependencies import get_current_user
 from backend.services.firebase import verify_firebase_id_token
 from backend.services.security import create_access_token, hash_password, verify_password
 
@@ -67,6 +68,25 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     return _token_response(user)
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+
+    if payload.current_password == payload.new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different")
+
+    current_user.password_hash = hash_password(payload.new_password)
+    db.add(current_user)
+    db.commit()
+
+    return {"message": "Password updated successfully"}
 
 
 @router.post("/google", response_model=TokenResponse)
