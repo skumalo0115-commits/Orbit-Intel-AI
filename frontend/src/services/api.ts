@@ -35,6 +35,10 @@ api.interceptors.request.use((config) => {
   const retryConfig = config as RetryableConfig
   const token = localStorage.getItem('token')
 
+  if (config.url?.startsWith('/api/')) {
+    config.url = config.url.slice(4)
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

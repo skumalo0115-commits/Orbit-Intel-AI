@@ -138,6 +138,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const googleReady = canUseGoogleSignIn()
 
   useEffect(() => {
     setUsername('')
@@ -176,7 +177,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     setIsSubmitting(true)
 
     try {
-      const response = await api.post<TokenPayload>('/api/auth/login', {
+      const response = await api.post<TokenPayload>('/auth/login', {
         identifier: normalizedIdentifier,
         password,
       })
@@ -209,7 +210,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
 
       const result = await signInWithPopup(firebaseAuth, getGoogleProvider())
       const idToken = await result.user.getIdToken()
-      const response = await api.post<TokenPayload>('/api/auth/google', { id_token: idToken })
+      const response = await api.post<TokenPayload>('/auth/google', { id_token: idToken })
       completeAuth(response.data)
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -257,7 +258,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
     setIsSubmitting(true)
 
     try {
-      const response = await api.post<TokenPayload>('/api/auth/register', {
+      const response = await api.post<TokenPayload>('/auth/register', {
         username: normalizedUsername,
         email: normalizedEmail,
         password,
@@ -332,7 +333,11 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-white/10" />
           </div>
 
-          <GoogleButton label={isSubmitting ? 'Please wait...' : 'Continue with Google'} onClick={submitGoogle} disabled={isSubmitting} />
+          <GoogleButton
+            label={googleReady ? (isSubmitting ? 'Please wait...' : 'Continue with Google') : 'Google sign-in unavailable'}
+            onClick={submitGoogle}
+            disabled={isSubmitting || !googleReady}
+          />
 
           <p className="text-sm text-white/70 text-center">
             need an account?{' '}
@@ -399,7 +404,11 @@ function AuthCard({ mode, onModeChange, onAuthenticated, onClose }: AuthCardProp
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-white/10" />
           </div>
 
-          <GoogleButton label={isSubmitting ? 'Please wait...' : 'Sign up with Google'} onClick={submitGoogle} disabled={isSubmitting} />
+          <GoogleButton
+            label={googleReady ? (isSubmitting ? 'Please wait...' : 'Sign up with Google') : 'Google sign-in unavailable'}
+            onClick={submitGoogle}
+            disabled={isSubmitting || !googleReady}
+          />
 
           <p className="text-sm text-white/70 text-center">
             already have an account?{' '}

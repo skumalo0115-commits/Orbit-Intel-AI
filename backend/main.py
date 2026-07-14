@@ -1,6 +1,14 @@
 from pathlib import Path
 import json
 import os
+import sys
+import types
+
+
+if "backend" not in sys.modules:
+    backend_package = types.ModuleType("backend")
+    backend_package.__path__ = [str(Path(__file__).resolve().parent)]
+    sys.modules["backend"] = backend_package
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,10 +65,11 @@ if frontend_dist.exists():
 
 @app.get("/")
 def healthcheck():
+    # Always return JSON if frontend dist is not available (avoid 500s).
     index_file = frontend_dist / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return {"status": "ok", "service": "NebulaGlass AI"}
+    return {"status": "ok", "service": "NebulaGlass AI", "frontend_dist_found": frontend_dist.exists()}
 
 
 @app.get("/env-check")
