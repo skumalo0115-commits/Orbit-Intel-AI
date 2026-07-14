@@ -19,8 +19,10 @@ app = FastAPI(title="NebulaGlass AI API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
+    # Using "*" with allow_credentials=True can break CORS behavior on some platforms.
+    # Disable credentials to ensure OPTIONS preflight is answered correctly.
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -109,9 +111,24 @@ def runtime_config():
     return Response(content=payload, media_type="application/javascript")
 
 
+@app.options("/api/auth/{rest:path}")
+@app.options("/auth/{rest:path}")
+async def preflight_auth(rest: str):
+    # Explicitly answer auth preflight to avoid any routing layer returning 405.
+    return Response(status_code=204)
+
+
 @app.get("/{full_path:path}")
 def spa_fallback(full_path: str):
-    if full_path.startswith(("auth", "upload", "documents", "analyze", "analysis", "ask-question")):
+    if full_path.startswith((
+        "auth",
+        "api/auth",
+        "upload",
+        "documents",
+        "analyze",
+        "analysis",
+        "ask-question",
+    )):
         return {"detail": "Not Found"}
 
     index_file = frontend_dist / "index.html"
